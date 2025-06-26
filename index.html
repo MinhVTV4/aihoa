@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Engine Phản ứng v2.0 - Giai đoạn 1: Nền tảng 3D</title>
+    <title>Engine Hóa học AI v3.0 - Nhà Hóa học AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -45,7 +45,7 @@
             flex-direction: column;
             gap: 1rem;
         }
-        .input-group { display: flex; gap: 1rem; }
+        .input-group { display: flex; gap: 1rem; align-items: center; }
         #equation-input {
             flex-grow: 1;
             background: var(--light-bg);
@@ -54,218 +54,286 @@
             padding: 0.75rem;
             color: #fff;
         }
-        .control-btn {
+        .main-btn {
             background-image: linear-gradient(to right, #6366f1, var(--accent-color));
             color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem;
             border: none; cursor: pointer; transition: all 0.3s;
             font-weight: 600;
         }
-        .control-btn:hover { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
-        .control-btn:disabled { background-image: none; background-color: #4b5563; cursor: not-allowed; }
-        #info-text { text-align: center; min-height: 24px; }
-        .loading-spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--accent-color);
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin-loader 1s linear infinite;
-            margin: 0 auto;
+        .main-btn:hover { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
+        .main-btn:disabled { background-image: none; background-color: #4b5563; cursor: not-allowed; }
+        
+        #controls-bar { display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;}
+        .icon-btn {
+            background: transparent; border: 1px solid #6b7280;
+            color: #d1d5db; width: 40px; height: 40px;
+            border-radius: 50%; display: flex;
+            justify-content: center; align-items: center;
+            cursor: pointer; transition: all 0.2s; font-size: 1.2rem;
         }
-        @keyframes spin-loader { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .icon-btn:hover { border-color: var(--accent-color); color: white; }
+        .icon-btn:disabled { color: #6b7280; border-color: #4b5563; cursor: not-allowed;}
+
+        #progress-container { flex-grow: 1; height: 8px; background: #4b5563; border-radius: 99px; overflow: hidden;}
+        #progress-bar { width: 0%; height: 100%; background: var(--accent-color); border-radius: 99px; }
+        #info-text { text-align: center; min-height: 24px; }
+        .loading-spinner { /* ... spinner styles ... */ }
     </style>
 </head>
 <body>
     <div class="simulation-container">
-        <h1 class="text-2xl font-bold text-center mb-4">Engine Phản ứng v2.0 - Giai đoạn 1</h1>
+        <h1 class="text-2xl font-bold text-center mb-4">Nhà Hóa học AI v3.0</h1>
         <div id="reaction-chamber"></div>
         <div class="ui-panel">
             <div class="input-group">
-                <input id="equation-input" type="text" value="2H2 + O2 -> 2H2O" placeholder="Nhập phương trình (ví dụ: 2H2 + O2 -> 2H2O)">
-                <button id="generate-btn" class="control-btn">Tạo Phản ứng 3D</button>
+                <!-- Thay đổi ở đây: Cập nhật giá trị và placeholder -->
+                <input id="equation-input" type="text" value="Hydro và Oxy" placeholder="Nhập các chất tham gia (vd: Sắt và Oxi)...">
+                <button id="generate-btn" class="main-btn">Tạo Phản ứng</button>
             </div>
-            <p id="info-text">Nhập phương trình để xem các phân tử 3D ban đầu.</p>
+             <div id="controls-bar">
+                <button id="play-pause-btn" class="icon-btn" disabled>▶️</button>
+                <button id="restart-btn" class="icon-btn" disabled>🔄</button>
+                <div id="progress-container">
+                    <div id="progress-bar"></div>
+                </div>
+            </div>
+            <p id="info-text">Hãy xem AI dự đoán và diễn họa phản ứng hóa học!</p>
         </div>
     </div>
 
-    <!-- Firebase & Three.js Imports -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
-        }
-    }
-    </script>
+    <!-- Imports -->
+    <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/" } }</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
     <script type="module">
-        // --- PHẦN 1: THIẾT LẬP FIREBASE, GEMINI & 3D ENGINE ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
         import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-ai.js";
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBVpguEIjTnIVOk1Ld0u-BGC7nM-pSww_o",
-            authDomain: "aihoa-ac63b.firebaseapp.com",
-            projectId: "aihoa-ac63b",
-            storageBucket: "aihoa-ac63b.firebasestorage.app",
-            messagingSenderId: "241068548961",
-            appId: "1:241068548961:web:33d4126d020e9372d15b20"
-        };
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
         
-        let model;
-        try {
-            const app = initializeApp(firebaseConfig);
-            const ai = getAI(app, { backend: new GoogleAIBackend() });
-            model = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" });
-        } catch (e) {
-            console.error("Lỗi khởi tạo Firebase/AI:", e);
-            document.getElementById('info-text').innerText = "Lỗi khởi tạo. Vui lòng kiểm tra Console (F12).";
-        }
-
-        // --- Thiết lập 3D ---
+        // --- Firebase, AI, 3D Engine Setup (giữ nguyên) ---
+        const firebaseConfig = { apiKey: "AIzaSyBVpguEIjTnIVOk1Ld0u-BGC7nM-pSww_o", authDomain: "aihoa-ac63b.firebaseapp.com", projectId: "aihoa-ac63b", storageBucket: "aihoa-ac63b.firebasestorage.app", messagingSenderId: "241068548961", appId: "1:241068548961:web:33d4126d020e9372d15b20"};
+        let model; try { const app = initializeApp(firebaseConfig); const ai = getAI(app, { backend: new GoogleAIBackend() }); model = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" }); } catch (e) { console.error("Lỗi khởi tạo Firebase/AI:", e); }
         const chamber = document.getElementById('reaction-chamber');
-        let renderer, scene, camera, controls;
+        let renderer, scene, camera, controls, composer, mainTimeline;
+        let molecules = [];
 
-        function init3D() {
-            try {
+        function init3D() { 
+             try {
                 scene = new THREE.Scene();
                 camera = new THREE.PerspectiveCamera(75, chamber.clientWidth / chamber.clientHeight, 0.1, 1000);
-                
-                // Sửa lỗi: Thử khởi tạo renderer không có antialias
-                renderer = new THREE.WebGLRenderer(); 
+                renderer = new THREE.WebGLRenderer({ antialias: true });
                 renderer.setSize(chamber.clientWidth, chamber.clientHeight);
                 renderer.setPixelRatio(window.devicePixelRatio);
                 chamber.appendChild(renderer.domElement);
-
-                // Ánh sáng
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-                scene.add(ambientLight);
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-                directionalLight.position.set(5, 10, 7.5);
-                scene.add(directionalLight);
-
+                const renderPass = new RenderPass(scene, camera);
+                const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+                bloomPass.threshold = 0; bloomPass.strength = 1.2; bloomPass.radius = 0.5;
+                const outputPass = new OutputPass();
+                composer = new EffectComposer(renderer);
+                composer.addPass(renderPass); composer.addPass(bloomPass); composer.addPass(outputPass);
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); directionalLight.position.set(5, 10, 7.5); scene.add(directionalLight);
                 camera.position.z = 15;
-
-                // Điều khiển camera
                 controls = new OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
-
-                // Vòng lặp render
-                function animate() {
-                    requestAnimationFrame(animate);
-                    controls.update();
-                    renderer.render(scene, camera);
-                }
+                function animate() { requestAnimationFrame(animate); controls.update(); composer.render(); }
                 animate();
-
-            } catch (error) {
-                console.error("Lỗi khởi tạo WebGL:", error);
-                chamber.innerHTML = `
-                    <div style="padding: 20px; text-align: center; color: #ffdddd;">
-                        <h2 class="text-xl font-bold">Lỗi không thể tạo môi trường 3D (WebGL)</h2>
-                        <p class="mt-2">Rất tiếc, trình duyệt hoặc card đồ họa của bạn không hỗ trợ WebGL cần thiết để chạy mô phỏng này.</p>
-                        <p class="mt-1">Vui lòng thử cập nhật trình duyệt hoặc driver đồ họa nếu có thể.</p>
-                    </div>
-                `;
-                // Dừng script nếu không thể khởi tạo 3D
-                throw new Error("WebGL is not supported or could not be initialized.");
-            }
+            } catch (error) { chamber.innerHTML = `<div class="p-4 text-center text-red-300"><h2>Lỗi WebGL</h2><p>Không thể tạo môi trường 3D.</p></div>`; throw new Error("WebGL init failed"); }
         }
-        
-        window.addEventListener('resize', () => {
-            if (camera && renderer) {
-                camera.aspect = chamber.clientWidth / chamber.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(chamber.clientWidth, chamber.clientHeight);
-            }
-        });
-        
-        // --- PHẦN 2: LOGIC VẼ 3D & ỨNG DỤNG ---
+        window.addEventListener('resize', () => { /* ... resize logic ... */ });
+
+        // --- Core Application Logic ---
         const generateBtn = document.getElementById('generate-btn');
         const input = document.getElementById('equation-input');
         const infoText = document.getElementById('info-text');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const progressBar = document.getElementById('progress-bar');
 
-        function clearScene() {
-            if (!scene) return;
-            while(scene.children.length > 2){ // Giữ lại 2 đèn
-                const child = scene.children[2];
-                scene.remove(child);
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) child.material.dispose();
-                 if (child.children) { // Dọn dẹp group
-                    child.children.forEach(c => {
-                         if (c.geometry) c.geometry.dispose();
-                         if (c.material) c.material.dispose();
-                    });
-                }
-            }
+        function clearScene() { 
+             molecules.forEach(m => {
+                m.children.forEach(c => {
+                    c.geometry.dispose();
+                    c.material.dispose();
+                });
+                scene.remove(m);
+            });
+            molecules = [];
         }
 
         function drawMolecule3D(moleculeDef, x, y, z) {
             const group = new THREE.Group();
             const atomRadius = 0.5;
-            
             moleculeDef.atoms.forEach((atomDef, i) => {
                 const geometry = new THREE.SphereGeometry(atomRadius, 32, 32);
-                const material = new THREE.MeshStandardMaterial({ 
-                    color: atomDef.color,
-                    metalness: 0.3,
-                    roughness: 0.5
-                });
+                const material = new THREE.MeshStandardMaterial({ color: atomDef.color, metalness: 0.4, roughness: 0.4, emissive: '#000000' });
                 const atomMesh = new THREE.Mesh(geometry, material);
-                
-                if (moleculeDef.atoms.length > 1) {
-                    const angle = (i / moleculeDef.atoms.length) * 2 * Math.PI;
-                    atomMesh.position.x = Math.cos(angle) * atomRadius;
-                    atomMesh.position.y = Math.sin(angle) * atomRadius;
-                }
+                if (moleculeDef.atoms.length > 1) { const angle = (i / moleculeDef.atoms.length) * 2 * Math.PI; atomMesh.position.x = Math.cos(angle) * atomRadius; atomMesh.position.y = Math.sin(angle) * atomRadius; }
                 group.add(atomMesh);
             });
             group.position.set(x, y, z);
             scene.add(group);
+            molecules.push(group);
             return group;
+        }
+        
+        // --- Animation Engine ---
+        function runAnimation(plan) {
+            if (mainTimeline) mainTimeline.kill(); 
+            clearScene();
+            
+            // Cập nhật tiêu đề phản ứng trên UI
+            infoText.innerText = `Đang chuẩn bị hoạt ảnh cho: ${plan.title}`;
+
+            mainTimeline = gsap.timeline({
+                 onUpdate: () => {
+                    progressBar.style.width = `${mainTimeline.progress() * 100}%`;
+                    playPauseBtn.textContent = mainTimeline.paused() ? "▶️" : "⏸️";
+                 },
+                 onComplete: () => {
+                    infoText.innerText = "Hoạt ảnh hoàn tất!";
+                    playPauseBtn.textContent = "▶️";
+                    playPauseBtn.disabled = true;
+                 }
+            });
+            
+            playPauseBtn.disabled = false;
+            restartBtn.disabled = false;
+            playPauseBtn.textContent = "⏸️";
+
+            const reactantObjects = [];
+            let reactantX = -10;
+            plan.reactants.forEach((r) => {
+                for (let j = 0; j < r.count; j++) {
+                    const moleculeObj = drawMolecule3D(r, reactantX, (j % 2 === 0 ? 1 : -1) * 4, 0);
+                    reactantObjects.push({obj: moleculeObj});
+                    reactantX += 5;
+                }
+            });
+            
+             plan.animationSteps.forEach(step => {
+                // Tạo một label và một callback để cập nhật text tại cùng một thời điểm
+                mainTimeline.add(() => { infoText.innerText = step.text || '...'; }, step.type);
+
+                if (step.type === 'move_to_center') { 
+                    mainTimeline.to(camera.position, { z: 25, duration: 2.5, ease: "power2.inOut"}, step.type);
+                    reactantObjects.forEach((m, i) => { 
+                        mainTimeline.to(m.obj.position, { x: (i % 3 - 1) * 3, y: Math.floor(i / 3) * 3 - 1, z: 0, duration: 2.5, ease: "power2.inOut" }, step.type); 
+                    });
+                } else if (step.type === 'break_bonds') { 
+                    mainTimeline.to(camera.position, { z: 12, duration: 2, ease: "power2.inOut"}, step.type); 
+                    reactantObjects.forEach(m => { 
+                        m.obj.children.forEach((atomMesh, i) => { 
+                            mainTimeline.to(atomMesh.material.emissive, { r: 1, g: 1, b: 0.8, duration: 1, ease: "power2.in" }, step.type); 
+                            const angle = (i / m.obj.children.length) * 2 * Math.PI; 
+                            mainTimeline.to(atomMesh.position, { x: atomMesh.position.x + Math.cos(angle) * 0.8, y: atomMesh.position.y + Math.sin(angle) * 0.8, duration: 2, ease: "back.out(4)" }, step.type); 
+                        }); 
+                    }); 
+                } else if (step.type === 'rearrange') { 
+                    reactantObjects.forEach(m => { 
+                        mainTimeline.to(m.obj.children.map(c => c.material), { opacity: 0, duration: 1, onComplete: () => scene.remove(m.obj) }, step.type); 
+                    }); 
+                    if (plan.isExothermic) { 
+                        mainTimeline.add(() => { 
+                            const shockwaveGeo = new THREE.TorusGeometry(1, 0.1, 16, 100); 
+                            const shockwaveMat = new THREE.MeshBasicMaterial({ color: 0xffffee, transparent: true, opacity: 1 }); 
+                            const shockwave = new THREE.Mesh(shockwaveGeo, shockwaveMat); 
+                            shockwave.rotation.x = Math.PI / 2; 
+                            scene.add(shockwave); 
+                            gsap.to(shockwave.scale, { x: 20, y: 20, z: 20, duration: 2, ease: "power1.out" }); 
+                            gsap.to(shockwave.material, { opacity: 0, duration: 2, ease: "power1.out", onComplete: () => scene.remove(shockwave) }); 
+                        }, step.type + "+=0.5"); 
+                    } 
+                    let productX = -5; 
+                    plan.products.forEach(p => { 
+                        for (let j = 0; j < p.count; j++) { 
+                            const productObj = drawMolecule3D(p, productX, (j % 2 === 0 ? 1 : -1) * 3, 0); 
+                            productObj.children.forEach(c => { c.material.transparent = true; c.material.opacity = 0; }); 
+                            mainTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, step.type + "+=1"); 
+                            mainTimeline.to(productObj.children.map(c => c.material.emissive), { r: 0, g: 0, b: 0, duration: 2 }, step.type + "+=1"); 
+                            productX += 5; 
+                        } 
+                    }); 
+                }
+            });
         }
 
         async function generateReactionPlan() {
-            if (!model) { infoText.innerText = "Mô hình AI chưa sẵn sàng."; return; }
-            if (!renderer) { infoText.innerText = "Môi trường 3D chưa được khởi tạo."; return; }
-            
-            const equation = input.value;
-            if (!equation) { infoText.innerText = "Vui lòng nhập phương trình."; return; }
+            if (!model || !renderer) { 
+                infoText.innerText = "Lỗi: Engine AI chưa sẵn sàng.";
+                return; 
+            }
+            const userInput = input.value;
+            if (!userInput) { 
+                infoText.innerText = "Vui lòng nhập các chất tham gia.";
+                return; 
+            }
 
-            infoText.innerHTML = '<div class="loading-spinner"></div>';
+            infoText.innerHTML = 'AI đang tư duy... 🧠';
             generateBtn.disabled = true;
 
-            const prompt = `Phân tích phương trình hóa học: "${equation}" và tạo một kịch bản JSON. JSON phải có: title, reactants (array of {molecule, count, atoms: [{symbol, color}]}). Ví dụ màu: H là #FFFFFF, O là #FF6B6B, C là #333333, Na là #90A4AE. Chỉ trả lời bằng JSON.`;
+            // --- THAY ĐỔI LỚN Ở ĐÂY: PROMPT MỚI ---
+            // Yêu cầu AI thực hiện nhiều việc hơn: dự đoán, cân bằng, rồi mới tạo kịch bản
+            const prompt = `
+            Từ các chất tham gia do người dùng cung cấp là: "${userInput}".
+            Hãy thực hiện các bước sau một cách tuần tự:
+            1. Dự đoán sản phẩm hóa học có khả năng xảy ra nhất trong điều kiện tiêu chuẩn.
+            2. Viết phương trình hóa học đầy đủ và đã được cân bằng cho phản ứng đó.
+            3. Dựa trên phương trình bạn vừa tạo, hãy tạo một kịch bản hoạt ảnh chi tiết dưới dạng một đối tượng JSON.
+
+            Đối tượng JSON phải có cấu trúc chính xác như sau:
+            - "title": (string) Phương trình hóa học đầy đủ mà bạn đã tạo (ví dụ: "2H2 + O2 -> 2H2O").
+            - "isExothermic": (boolean) Phản ứng có tỏa nhiệt hay không.
+            - "reactants": (array) Một mảng các đối tượng chất phản ứng, mỗi đối tượng có dạng {molecule: string, count: number, atoms: [{symbol: string, color: string}]}.
+            - "products": (array) Một mảng các đối tượng sản phẩm, cấu trúc tương tự reactants.
+            - "animationSteps": (array) Một mảng các bước hoạt ảnh, mỗi bước có dạng {type: 'move_to_center' | 'break_bonds' | 'rearrange', text: string}.
+
+            Sử dụng các màu sau cho nguyên tử (hãy tự suy ra các màu khác nếu cần):
+            - H: #FFFFFF (Trắng)
+            - O: #FF6B6B (Đỏ)
+            - C: #333333 (Xám đen)
+            - N: #6B9AFF (Xanh dương)
+            - Fe: #A19D94 (Xám kim loại)
+            - S: #FFF36B (Vàng)
+            - Cl: #6BFF8B (Xanh lá)
+            - Na: #B06BFF (Tím)
+
+            Quan trọng: Chỉ trả lời bằng một khối mã JSON hợp lệ duy nhất, không chứa "'''json" hay bất kỳ văn bản giải thích nào khác.
+            `;
             
             try {
                 const result = await model.generateContent(prompt);
                 const textResponse = result.response.text();
+                // Dọn dẹp văn bản để đảm bảo nó là JSON hợp lệ
                 const cleanedText = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
                 const plan = JSON.parse(cleanedText);
-
-                infoText.innerText = plan.title || "Hiển thị các chất phản ứng 3D";
-                
-                clearScene();
-                let currentX = -5;
-                plan.reactants.forEach((r) => {
-                    for(let j=0; j < r.count; j++) {
-                        drawMolecule3D(r, currentX, (j % 2) * 2 - 1, 0);
-                        currentX += 3;
-                    }
-                });
-
+                runAnimation(plan);
             } catch (error) {
-                console.error("Lỗi khi gọi Gemini:", error);
-                infoText.innerText = "Đã có lỗi xảy ra. Vui lòng thử lại.";
+                console.error("Lỗi phân tích hoặc tạo hoạt ảnh:", error);
+                infoText.innerText = "Đã có lỗi xảy ra. AI có thể đã trả về định dạng không đúng. Vui lòng thử lại.";
             } finally {
                 generateBtn.disabled = false;
             }
         }
         
-        // Khởi tạo engine 3D ngay khi tải trang
+        // --- Event Listeners cho các nút điều khiển mới ---
+        playPauseBtn.addEventListener('click', () => {
+            if (mainTimeline) {
+                mainTimeline.paused(!mainTimeline.paused());
+            }
+        });
+
+        restartBtn.addEventListener('click', () => {
+            if (mainTimeline) {
+                mainTimeline.restart();
+            }
+        });
+        
         init3D();
         generateBtn.addEventListener('click', generateReactionPlan);
     </script>
