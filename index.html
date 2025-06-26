@@ -117,7 +117,7 @@
         
         // --- Firebase, AI, 3D Engine Setup (giữ nguyên) ---
         const firebaseConfig = { apiKey: "AIzaSyBVpguEIjTnIVOk1Ld0u-BGC7nM-pSww_o", authDomain: "aihoa-ac63b.firebaseapp.com", projectId: "aihoa-ac63b", storageBucket: "aihoa-ac63b.firebasestorage.app", messagingSenderId: "241068548961", appId: "1:241068548961:web:33d4126d020e9372d15b20"};
-        let model; try { const app = initializeApp(firebaseConfig); const ai = getAI(app, { backend: new GoogleAIBackend() }); model = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" }); } catch (e) { console.error("Lỗi khởi tạo Firebase/AI:", e); }
+        let model; try { const app = initializeApp(firebaseConfig); const ai = getAI(app, { backend: new GoogleAIBackend() }); model = getGenerativeModel(ai, { model: "gemini-2.5-flash" }); } catch (e) { console.error("Lỗi khởi tạo Firebase/AI:", e); }
         const chamber = document.getElementById('reaction-chamber');
         let renderer, scene, camera, controls, composer, mainTimeline;
         let molecules = [];
