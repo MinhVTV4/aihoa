@@ -382,7 +382,7 @@
             background-color: var(--light-bg);
             border-radius: 0.75rem;
             padding: 0.75rem 1rem;
-            margin-top: 1rem;
+            /* margin-top: 1rem; Removed from here, now outside ui-panel */
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
         .atom-legend-header {
@@ -439,6 +439,18 @@
             <!-- New: Drag hint for 3D interaction -->
             <div id="drag-hint">Kéo để xoay</div>
         </div>
+
+        <!-- NEW: Atom Color Legend Section - Moved here -->
+        <div id="atom-legend" class="atom-legend">
+            <div class="atom-legend-header" id="atom-legend-header">
+                <span>Chú thích màu nguyên tử</span>
+                <span class="atom-legend-toggle">▼</span>
+            </div>
+            <div class="atom-legend-content" id="atom-legend-content">
+                <!-- Atom items will be dynamically inserted here -->
+            </div>
+        </div>
+
         <div class="ui-panel">
             <div class="input-group">
                 <textarea id="equation-input" rows="3" placeholder="Nhập các chất tham gia (vd: H2 + O2), hoặc phương trình (vd: 2H2 + O2 -> 2H2O), hoặc mô tả (vd: Phản ứng đốt cháy Metan)..."></textarea>
@@ -462,17 +474,6 @@
                 </div>
             </div>
             <input type="range" id="timeline-slider" min="0" max="100" value="0" disabled>
-
-            <!-- NEW: Atom Color Legend Section -->
-            <div id="atom-legend" class="atom-legend">
-                <div class="atom-legend-header" id="atom-legend-header">
-                    <span>Chú thích màu nguyên tử</span>
-                    <span class="atom-legend-toggle">▼</span>
-                </div>
-                <div class="atom-legend-content" id="atom-legend-content">
-                    <!-- Atom items will be dynamically inserted here -->
-                </div>
-            </div>
 
             <p id="info-text">Hãy xem AI dự đoán và diễn họa phản ứng hóa học!</p>
         </div>
@@ -757,6 +758,10 @@
 
             displayMessage(`Đang chuẩn bị hoạt ảnh cho: ${plan.title}`);
 
+            // NEW: Update atom legend based on current reaction plan
+            updateAtomLegend(plan);
+
+
             mainTimeline = gsap.timeline({
                 onUpdate: () => {
                     timelineSlider.value = mainTimeline.progress() * 100;
@@ -851,6 +856,8 @@
             if (!userInput) {
                 displayMessage("Vui lòng nhập các chất tham gia để tạo phản ứng.", true);
                 input.classList.add('input-error');
+                // NEW: Clear legend if input is empty
+                updateAtomLegend(null);
                 return;
             } else {
                 input.classList.remove('input-error');
@@ -868,6 +875,8 @@
                 particles.visible = false;
             }
             toggleDragHint(false);
+            // NEW: Clear legend when AI starts processing a new request
+            updateAtomLegend(null);
 
             const prompt = `
             Từ các chất tham gia do người dùng cung cấp là: "${userInput}".
@@ -920,6 +929,8 @@
                     particles.visible = true;
                 }
                 toggleDragHint(true);
+                // NEW: Clear legend if AI processing fails
+                updateAtomLegend(null);
             } finally {
                 generateBtn.disabled = false;
                 loadingSpinner.classList.add('hidden');
@@ -978,7 +989,7 @@
             generateBtn.addEventListener('click', generateReactionPlan);
             displayMessage("Hãy xem AI dự đoán và diễn họa phản ứng hóa học!");
             toggleDragHint(true);
-            populateAtomLegend(); // NEW: Populate the legend on app initialization
+            updateAtomLegend(null); // NEW: Initially clear or set up empty legend
         }
 
         modalCloseBtn.addEventListener('click', hideWelcomeModal);
@@ -986,17 +997,54 @@
         showWelcomeModal();
 
         // NEW: Atom Legend Functions
-        function populateAtomLegend() {
+        function updateAtomLegend(plan) {
             atomLegendContent.innerHTML = ''; // Clear existing content
-            ATOM_COLORS.forEach(atom => {
-                const item = document.createElement('div');
-                item.classList.add('atom-legend-item');
-                item.innerHTML = `
-                    <div class="atom-color-circle" style="background-color: ${atom.color};"></div>
-                    <span>${atom.symbol}</span>
-                `;
-                atomLegendContent.appendChild(item);
-            });
+
+            let uniqueAtomSymbols = new Set();
+
+            if (plan) {
+                // Collect atom symbols from reactants
+                plan.reactants.forEach(reactant => {
+                    reactant.atoms.forEach(atom => {
+                        uniqueAtomSymbols.add(atom.symbol);
+                    });
+                });
+
+                // Collect atom symbols from products
+                plan.products.forEach(product => {
+                    product.atoms.forEach(atom => {
+                        uniqueAtomSymbols.add(atom.symbol);
+                    });
+                });
+            } else {
+                // If no plan (e.g., initial state or error), show some common ones or nothing
+                // For now, let's show some basic ones if plan is null
+                uniqueAtomSymbols.add('H');
+                uniqueAtomSymbols.add('O');
+                uniqueAtomSymbols.add('C');
+            }
+
+
+            const atomsToShow = ATOM_COLORS.filter(atom => uniqueAtomSymbols.has(atom.symbol));
+
+            if (atomsToShow.length === 0) {
+                // If no unique atoms, or plan is null and we don't want default, hide legend or show a message
+                atomLegendContent.innerHTML = '<span class="text-sm text-gray-400">Không có nguyên tử nào để hiển thị chú thích.</span>';
+                atomLegendContent.classList.add('expanded'); // Keep it expanded to show the message
+            } else {
+                 atomsToShow.forEach(atom => {
+                    const item = document.createElement('div');
+                    item.classList.add('atom-legend-item');
+                    item.innerHTML = `
+                        <div class="atom-color-circle" style="background-color: ${atom.color};"></div>
+                        <span>${atom.symbol}</span>
+                    `;
+                    atomLegendContent.appendChild(item);
+                });
+                 // Ensure legend is expanded when populated with actual data
+                atomLegendContent.classList.add('expanded');
+                atomLegendToggle.style.transform = 'rotate(180deg)';
+            }
         }
 
         // NEW: Toggle Atom Legend visibility
