@@ -232,10 +232,16 @@
             border-radius: 99px;
             transition: width 0.3s ease; /* Hiệu ứng chuyển động cho thanh tiến trình */
         }
+        /* Cập nhật style cho info-text để nó hoạt động như toast */
         #info-text {
             text-align: center;
             min-height: 24px; /* Giữ chỗ để tránh nhảy layout */
             color: #e5e7eb;
+            opacity: 0; /* Mặc định ẩn */
+            transition: opacity 0.3s ease-in-out, color 0.3s ease-in-out; /* Hiệu ứng chuyển đổi */
+        }
+        #info-text.error-message {
+            color: var(--danger-color); /* Màu đỏ cho lỗi */
         }
 
         /* Spinner CSS */
@@ -342,7 +348,7 @@
         } catch (e) {
             console.error("Lỗi khởi tạo Firebase/AI:", e);
             // Hiển thị lỗi nếu không thể khởi tạo AI
-            document.getElementById('info-text').innerText = "Lỗi: Không thể kết nối với AI Engine. Vui lòng kiểm tra console để biết chi tiết.";
+            displayMessage("Lỗi: Không thể kết nối với AI Engine. Vui lòng kiểm tra console để biết chi tiết.", true); // Dùng hàm mới
             document.getElementById('generate-btn').disabled = true;
         }
 
@@ -426,13 +432,36 @@
         const infoText = document.getElementById('info-text');
         const playPauseBtn = document.getElementById('play-pause-btn');
         const restartBtn = document.getElementById('restart-btn');
-        // const progressBar = document.getElementById('progress-bar'); // Sẽ không dùng thanh này nữa
         const loadingSpinner = document.getElementById('loading-spinner');
-        const speedButtons = document.querySelectorAll('.speed-btn'); // Lấy tất cả các nút tốc độ
-        const timelineSlider = document.getElementById('timeline-slider'); // Thanh trượt thời gian
+        const speedButtons = document.querySelectorAll('.speed-btn');
+        const timelineSlider = document.getElementById('timeline-slider');
+
+        // Hàm mới để hiển thị thông báo
+        let currentMessageTimeout;
+        function displayMessage(message, isError = false) {
+            // Xóa timeout cũ nếu có
+            if (currentMessageTimeout) {
+                clearTimeout(currentMessageTimeout);
+                currentMessageTimeout = null;
+            }
+
+            infoText.textContent = message;
+            if (isError) {
+                infoText.classList.add('error-message');
+            } else {
+                infoText.classList.remove('error-message');
+            }
+            gsap.to(infoText, { opacity: 1, duration: 0.3, ease: "power2.out" }); // Hiển thị thông báo
+
+            // Tự động ẩn sau 5 giây (hoặc giữ lại nếu là lỗi cho đến khi có hành động mới)
+            if (!isError) {
+                currentMessageTimeout = setTimeout(() => {
+                    gsap.to(infoText, { opacity: 0, duration: 0.5, ease: "power2.in" });
+                }, 5000);
+            }
+        }
 
         function clearScene() {
-            // Loại bỏ tất cả các phân tử khỏi scene và giải phóng bộ nhớ
             molecules.forEach(m => {
                 m.children.forEach(c => {
                     if (c.geometry) c.geometry.dispose();
@@ -443,95 +472,82 @@
             molecules = [];
         }
 
-        // Hàm vẽ phân tử 3D
         function drawMolecule3D(moleculeDef, x, y, z) {
             const group = new THREE.Group();
-            const atomRadius = 0.5; // Bán kính nguyên tử
+            const atomRadius = 0.5;
 
             moleculeDef.atoms.forEach((atomDef, i) => {
                 const geometry = new THREE.SphereGeometry(atomRadius, 32, 32);
-                // Tạo vật liệu với hiệu ứng kim loại và độ nhám
                 const material = new THREE.MeshStandardMaterial({
                     color: atomDef.color,
                     metalness: 0.4,
                     roughness: 0.4,
-                    emissive: '#000000' // Không phát sáng ban đầu
+                    emissive: '#000000'
                 });
                 const atomMesh = new THREE.Mesh(geometry, material);
 
-                // Sắp xếp các nguyên tử trong phân tử (đơn giản hóa)
                 if (moleculeDef.atoms.length > 1) {
                     const angle = (i / moleculeDef.atoms.length) * 2 * Math.PI;
-                    atomMesh.position.x = Math.cos(angle) * atomRadius * 1.5; // Mở rộng khoảng cách một chút
+                    atomMesh.position.x = Math.cos(angle) * atomRadius * 1.5;
                     atomMesh.position.y = Math.sin(angle) * atomRadius * 1.5;
                 }
                 group.add(atomMesh);
             });
 
-            group.position.set(x, y, z); // Đặt vị trí nhóm phân tử
-            scene.add(group); // Thêm vào scene
-            molecules.push(group); // Lưu trữ để quản lý
+            group.position.set(x, y, z);
+            scene.add(group);
+            molecules.push(group);
             return group;
         }
 
         // --- Animation Engine ---
         function runAnimation(plan) {
-            // Dừng và xóa timeline cũ nếu có
             if (mainTimeline) mainTimeline.kill();
-            clearScene(); // Xóa các phân tử cũ
+            clearScene();
+            
+            displayMessage(`Đang chuẩn bị hoạt ảnh cho: ${plan.title}`); // Dùng hàm mới
 
-            // Cập nhật tiêu đề phản ứng trên UI
-            infoText.innerText = `Đang chuẩn bị hoạt ảnh cho: ${plan.title}`;
-
-            // Khởi tạo GSAP Timeline
             mainTimeline = gsap.timeline({
                 onUpdate: () => {
-                    // Cập nhật giá trị thanh trượt dựa trên tiến độ timeline
                     timelineSlider.value = mainTimeline.progress() * 100;
                     playPauseBtn.textContent = mainTimeline.paused() ? "▶️" : "⏸️";
                 },
                 onComplete: () => {
-                    infoText.innerText = "Hoạt ảnh hoàn tất!";
+                    displayMessage("Hoạt ảnh hoàn tất!"); // Dùng hàm mới
                     playPauseBtn.textContent = "▶️";
-                    playPauseBtn.disabled = true; // Vô hiệu hóa nút play/pause khi hoàn thành
-                    timelineSlider.disabled = true; // Vô hiệu hóa thanh trượt khi hoàn thành
-                    speedButtons.forEach(btn => btn.disabled = true); // Vô hiệu hóa nút tốc độ
+                    playPauseBtn.disabled = true;
+                    timelineSlider.disabled = true;
+                    speedButtons.forEach(btn => btn.disabled = true);
                 }
             });
 
-            // Kích hoạt các nút điều khiển và thanh trượt
             playPauseBtn.disabled = false;
             restartBtn.disabled = false;
             timelineSlider.disabled = false;
-            speedButtons.forEach(btn => btn.disabled = false); // Kích hoạt nút tốc độ
+            speedButtons.forEach(btn => btn.disabled = false);
 
-            playPauseBtn.textContent = "⏸️"; // Đặt thành pause ban đầu
+            playPauseBtn.textContent = "⏸️";
 
             const reactantObjects = [];
-            let reactantX = -10; // Vị trí X ban đầu cho chất phản ứng
+            let reactantX = -10;
 
-            // Vẽ các chất phản ứng
             plan.reactants.forEach((r) => {
                 for (let j = 0; j < r.count; j++) {
                     const moleculeObj = drawMolecule3D(r, reactantX, (j % 2 === 0 ? 1 : -1) * 4, 0);
                     reactantObjects.push({ obj: moleculeObj });
-                    reactantX += 5; // Di chuyển vị trí X cho phân tử tiếp theo
+                    reactantX += 5;
                 }
             });
 
-            // Thêm các bước hoạt ảnh vào timeline
             plan.animationSteps.forEach(step => {
-                // Thêm một label và một callback để cập nhật text tại cùng một thời điểm
-                mainTimeline.add(() => { infoText.innerText = step.text || '...'; }, step.type);
+                mainTimeline.add(() => { displayMessage(step.text || '...'); }, step.type); // Dùng hàm mới
 
                 if (step.type === 'move_to_center') {
-                    // Di chuyển camera và các phân tử vào trung tâm
                     mainTimeline.to(camera.position, { z: 25, duration: 2.5, ease: "power2.inOut"}, step.type);
                     reactantObjects.forEach((m, i) => {
                         mainTimeline.to(m.obj.position, { x: (i % 3 - 1) * 3, y: Math.floor(i / 3) * 3 - 1, z: 0, duration: 2.5, ease: "power2.inOut" }, step.type);
                     });
                 } else if (step.type === 'break_bonds') {
-                    // Phá vỡ liên kết, các nguyên tử tách ra và phát sáng
                     mainTimeline.to(camera.position, { z: 12, duration: 2, ease: "power2.inOut"}, step.type);
                     reactantObjects.forEach(m => {
                         m.obj.children.forEach((atomMesh, i) => {
@@ -541,12 +557,10 @@
                         });
                     });
                 } else if (step.type === 'rearrange') {
-                    // Sắp xếp lại, các phân tử cũ biến mất, sản phẩm mới xuất hiện
                     reactantObjects.forEach(m => {
                         mainTimeline.to(m.obj.children.map(c => c.material), { opacity: 0, duration: 1, onComplete: () => scene.remove(m.obj) }, step.type);
                     });
 
-                    // Hiệu ứng tỏa nhiệt nếu là phản ứng tỏa nhiệt
                     if (plan.isExothermic) {
                         mainTimeline.add(() => {
                             const shockwaveGeo = new THREE.TorusGeometry(1, 0.1, 16, 100);
@@ -556,18 +570,17 @@
                             scene.add(shockwave);
                             gsap.to(shockwave.scale, { x: 20, y: 20, z: 20, duration: 2, ease: "power1.out" });
                             gsap.to(shockwave.material, { opacity: 0, duration: 2, ease: "power1.out", onComplete: () => scene.remove(shockwave) });
-                        }, step.type + "+=0.5"); // Hiệu ứng xuất hiện sau một chút
+                        }, step.type + "+=0.5");
 
                     }
 
-                    let productX = -5; // Vị trí X ban đầu cho sản phẩm
-                    // Vẽ các sản phẩm mới
+                    let productX = -5;
                     plan.products.forEach(p => {
                         for (let j = 0; j < p.count; j++) {
                             const productObj = drawMolecule3D(p, productX, (j % 2 === 0 ? 1 : -1) * 3, 0);
-                            productObj.children.forEach(c => { c.material.transparent = true; c.material.opacity = 0; }); // Ban đầu ẩn sản phẩm
-                            mainTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, step.type + "+=1"); // Hiệu ứng xuất hiện
-                            mainTimeline.to(productObj.children.map(c => c.material.emissive), { r: 0, g: 0, b: 0, duration: 2 }, step.type + "+=1"); // Tắt phát sáng
+                            productObj.children.forEach(c => { c.material.transparent = true; c.material.opacity = 0; });
+                            mainTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, step.type + "+=1");
+                            mainTimeline.to(productObj.children.map(c => c.material.emissive), { r: 0, g: 0, b: 0, duration: 2 }, step.type + "+=1");
                             productX += 5;
                         }
                     });
@@ -576,31 +589,27 @@
         }
 
         async function generateReactionPlan() {
-            // Kiểm tra trạng thái AI engine và renderer
             if (!model || !renderer) {
-                infoText.innerText = "Lỗi: Engine AI hoặc môi trường 3D chưa sẵn sàng.";
+                displayMessage("Lỗi: Engine AI hoặc môi trường 3D chưa sẵn sàng.", true); // Dùng hàm mới
                 return;
             }
-            const userInput = input.value.trim(); // Lấy giá trị và loại bỏ khoảng trắng dư thừa
+            const userInput = input.value.trim();
             if (!userInput) {
-                // THAY ĐỔI: Phản hồi lỗi khi input rỗng
-                infoText.innerText = "Vui lòng nhập các chất tham gia để tạo phản ứng.";
-                input.classList.add('input-error'); // Thêm class lỗi
+                displayMessage("Vui lòng nhập các chất tham gia để tạo phản ứng.", true); // Dùng hàm mới
+                input.classList.add('input-error');
                 return;
             } else {
-                input.classList.remove('input-error'); // Xóa class lỗi nếu có
+                input.classList.remove('input-error');
             }
 
-            infoText.innerHTML = 'AI đang tư duy... 🧠';
-            generateBtn.disabled = true; // Vô hiệu hóa nút
-            loadingSpinner.classList.remove('hidden'); // Hiển thị spinner
-            // Vô hiệu hóa các nút điều khiển hoạt ảnh khi AI đang xử lý
+            displayMessage('AI đang tư duy... 🧠'); // Dùng hàm mới
+            generateBtn.disabled = true;
+            loadingSpinner.classList.remove('hidden');
             playPauseBtn.disabled = true;
             restartBtn.disabled = true;
             timelineSlider.disabled = true;
             speedButtons.forEach(btn => btn.disabled = true);
 
-            // Prompt mới cho AI
             const prompt = `
             Từ các chất tham gia do người dùng cung cấp là: "${userInput}".
             Hãy thực hiện các bước sau một cách tuần tự:
@@ -639,62 +648,54 @@
             `;
 
             try {
-                // Gọi API Gemini
                 const result = await model.generateContent(prompt);
                 const textResponse = result.response.text();
-
-                // Dọn dẹp văn bản để đảm bảo nó là JSON hợp lệ
                 const cleanedText = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-                const plan = JSON.parse(cleanedText); // Phân tích JSON
+                const plan = JSON.parse(cleanedText);
 
-                runAnimation(plan); // Chạy hoạt ảnh dựa trên kế hoạch
+                runAnimation(plan);
             } catch (error) {
                 console.error("Lỗi phân tích hoặc tạo hoạt ảnh:", error);
-                infoText.innerText = "Đã có lỗi xảy ra. AI có thể đã trả về định dạng không đúng hoặc gặp lỗi. Vui lòng thử lại.";
+                displayMessage("Đã có lỗi xảy ra. AI có thể đã trả về định dạng không đúng hoặc gặp lỗi. Vui lòng thử lại.", true); // Dùng hàm mới
             } finally {
-                generateBtn.disabled = false; // Kích hoạt lại nút
-                loadingSpinner.classList.add('hidden'); // Ẩn spinner
+                generateBtn.disabled = false;
+                loadingSpinner.classList.add('hidden');
             }
         }
 
-        // --- Event Listeners cho các nút điều khiển mới ---
         playPauseBtn.addEventListener('click', () => {
             if (mainTimeline) {
-                mainTimeline.paused(!mainTimeline.paused()); // Đảo ngược trạng thái tạm dừng
+                mainTimeline.paused(!mainTimeline.paused());
             }
         });
 
         restartBtn.addEventListener('click', () => {
             if (mainTimeline) {
-                mainTimeline.restart(); // Khởi động lại hoạt ảnh
+                mainTimeline.restart();
             }
         });
 
-        // Event Listeners cho các nút tốc độ
         speedButtons.forEach(button => {
             button.addEventListener('click', (event) => {
                 const speed = parseFloat(event.target.dataset.speed);
                 if (mainTimeline) {
-                    mainTimeline.timeScale(speed); // Đặt tốc độ timeline
+                    mainTimeline.timeScale(speed);
                 }
-                // Cập nhật trạng thái active cho nút tốc độ
                 speedButtons.forEach(btn => btn.classList.remove('active'));
                 event.target.classList.add('active');
             });
         });
 
-        // Event Listener cho thanh trượt thời gian
         timelineSlider.addEventListener('input', () => {
             if (mainTimeline) {
-                // Đặt tiến độ timeline dựa trên giá trị thanh trượt
                 mainTimeline.progress(timelineSlider.value / 100);
             }
         });
 
-        // Khởi tạo môi trường 3D khi trang tải xong
         init3D();
-        // Lắng nghe sự kiện click nút "Tạo Phản ứng"
         generateBtn.addEventListener('click', generateReactionPlan);
+        // Hiển thị thông báo chào mừng ban đầu
+        displayMessage("Hãy xem AI dự đoán và diễn họa phản ứng hóa học!");
     </script>
 </body>
 </html>
