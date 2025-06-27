@@ -523,6 +523,7 @@
         let renderer, scene, camera, controls, composer, mainTimeline;
         let molecules = [];
         let particles;
+        let solutionContainer; // NEW: Declare solution container globally
 
         function init3D() {
             chamber.innerHTML = ''; // Clear old WebGL error content if any
@@ -598,6 +599,19 @@
                 particles = new THREE.Points(particleGeometry, particleMaterial);
                 scene.add(particles);
                 particles.visible = true; // Show particles by default
+
+                // NEW: Create solution container (transparent box)
+                const solutionGeometry = new THREE.BoxGeometry(10, 10, 10); // Adjust size as needed
+                const solutionMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x000000, // Default to black or transparent
+                    transparent: true,
+                    opacity: 0.0
+                });
+                solutionContainer = new THREE.Mesh(solutionGeometry, solutionMaterial);
+                solutionContainer.position.set(0, 0, -5); // Position slightly behind main action
+                solutionContainer.visible = false; // Initially hidden
+                scene.add(solutionContainer);
+
 
                 // Main animation loop
                 function animate() {
@@ -722,6 +736,13 @@
                 scene.remove(particle);
             });
             molecules = [];
+
+            // NEW: Reset and hide solution container
+            if (solutionContainer) {
+                solutionContainer.material.color.set(0x000000); // Reset color
+                solutionContainer.material.opacity = 0.0; // Reset opacity
+                solutionContainer.visible = false; // Hide it
+            }
         }
 
         function drawMolecule3D(moleculeDef, x, y, z) {
@@ -929,7 +950,7 @@
                         console.warn("Gas evolution step has invalid 'origin_point'. Using default.");
                         step.origin_point = undefined; // Force default if invalid
                     }
-                } else if (step.type === 'precipitation') { // NEW: Validate precipitation step
+                } else if (step.type === 'precipitation') { // Validate precipitation step
                     if (typeof step.color !== 'string' || !step.color.startsWith('#')) {
                         console.warn("Precipitation step missing or invalid 'color'. Using default.");
                     }
@@ -938,6 +959,16 @@
                     }
                     if (step.formation_area && !['center', 'bottom'].includes(step.formation_area)) {
                         console.warn("Precipitation step has invalid 'formation_area'. Using default.");
+                    }
+                } else if (step.type === 'color_change') { // NEW: Validate color change step
+                    if (typeof step.initial_color !== 'string' || !step.initial_color.startsWith('#')) {
+                        console.warn("Color change step missing or invalid 'initial_color'. Using default.");
+                    }
+                    if (typeof step.final_color !== 'string' || !step.final_color.startsWith('#')) {
+                        console.warn("Color change step missing or invalid 'final_color'. Using default.");
+                    }
+                    if (typeof step.duration !== 'number' || step.duration <= 0) {
+                        console.warn("Color change step missing or invalid 'duration'. Using default.");
                     }
                 }
                 // Add validation for other new types here when implemented
@@ -978,6 +1009,12 @@
                         particles.visible = true;
                     }
                     toggleDragHint(true);
+                    // NEW: Ensure solution container is hidden after animation
+                    if (solutionContainer) {
+                        solutionContainer.visible = false;
+                        solutionContainer.material.color.set(0x000000); // Reset color
+                        solutionContainer.material.opacity = 0.0;
+                    }
                 }
             });
 
@@ -1048,9 +1085,27 @@
                     mainTimeline.add(() => {
                         createGasBubbles(step);
                     }, step.type);
-                } else if (step.type === 'precipitation') { // NEW: Handle precipitation step
+                } else if (step.type === 'precipitation') { // Handle precipitation step
                     mainTimeline.add(() => {
                         createPrecipitationParticles(step);
+                    }, step.type);
+                } else if (step.type === 'color_change') { // NEW: Handle color change step
+                    mainTimeline.add(() => {
+                        if (solutionContainer) {
+                            solutionContainer.visible = true;
+                            // Set initial color and opacity
+                            solutionContainer.material.color.set(step.initial_color || '#FFFFFF'); // Default white
+                            solutionContainer.material.opacity = 0.2; // Make it visible as a transparent solution
+
+                            // Animate to final color
+                            gsap.to(solutionContainer.material.color, {
+                                r: new THREE.Color(step.final_color || '#FFFFFF').r,
+                                g: new THREE.Color(step.final_color || '#FFFFFF').g,
+                                b: new THREE.Color(step.final_color || '#FFFFFF').b,
+                                duration: step.duration || 2,
+                                ease: "power1.inOut"
+                            });
+                        }
                     }, step.type);
                 }
             });
@@ -1111,6 +1166,10 @@
                     - 'color': (string) Mã màu HEX của hạt kết tủa (vd: '#F0F0F0' cho trắng).
                     - 'density': (string, tùy chọn) Mức độ dày đặc của kết tủa ('light', 'medium', 'heavy'). Mặc định là 'medium'.
                     - 'formation_area': (string, tùy chọn) Khu vực kết tủa hình thành ('center', 'bottom'). Mặc định là 'bottom'.
+                - 'color_change': Mô phỏng sự thay đổi màu sắc của dung dịch. Cần các thuộc tính bổ sung:
+                    - 'initial_color': (string) Mã màu HEX của màu ban đầu (vd: '#FFFFFF' cho không màu).
+                    - 'final_color': (string) Mã màu HEX của màu cuối cùng (vd: '#0000FF' cho xanh lam).
+                    - 'duration': (number) Thời gian chuyển màu tính bằng giây. Mặc định là 2 giây.
 
             Sử dụng các màu sau cho nguyên tử (hãy tự suy ra các màu khác nếu cần):
             - H: #FFFFFF (Trắng)
