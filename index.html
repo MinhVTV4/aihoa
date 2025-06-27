@@ -650,12 +650,12 @@
         const welcomeModalOverlay = document.getElementById('welcome-modal-overlay');
         const modalCloseBtn = document.getElementById('modal-close-btn');
 
-        // NEW: Atom Legend Elements
+        // Atom Legend Elements
         const atomLegendHeader = document.getElementById('atom-legend-header');
         const atomLegendContent = document.getElementById('atom-legend-content');
         const atomLegendToggle = atomLegendHeader.querySelector('.atom-legend-toggle');
 
-        // NEW: Define atom colors (must match what's in the AI prompt)
+        // Define atom colors (must match what's in the AI prompt)
         const ATOM_COLORS = [
             { symbol: 'H', color: '#FFFFFF' }, // Trắng
             { symbol: 'O', color: '#FF6B6B' }, // Đỏ
@@ -746,6 +746,36 @@
             return group;
         }
 
+        /**
+         * Validates the structure of the reaction plan object.
+         * @param {object} plan - The reaction plan object returned by the AI.
+         * @returns {boolean} True if the plan is valid, false otherwise.
+         * @throws {Error} If a critical property is missing or has an incorrect type.
+         */
+        function validateReactionPlan(plan) {
+            if (typeof plan !== 'object' || plan === null) {
+                throw new Error("Phản hồi AI không phải là đối tượng hợp lệ.");
+            }
+            if (typeof plan.title !== 'string' || plan.title.trim() === '') {
+                throw new Error("Thiếu hoặc sai định dạng 'title' trong phản hồi AI.");
+            }
+            if (!Array.isArray(plan.reactants)) {
+                throw new Error("Thiếu hoặc sai định dạng 'reactants' (phải là mảng) trong phản hồi AI.");
+            }
+            if (!Array.isArray(plan.products)) {
+                throw new Error("Thiếu hoặc sai định dạng 'products' (phải là mảng) trong phản hồi AI.");
+            }
+            if (!Array.isArray(plan.animationSteps)) {
+                throw new Error("Thiếu hoặc sai định dạng 'animationSteps' (phải là mảng) trong phản hồi AI.");
+            }
+            // Basic check for contents of reactants/products/animationSteps
+            if (plan.reactants.length === 0 && plan.products.length === 0) {
+                 throw new Error("Phản hồi AI không chứa chất phản ứng hoặc sản phẩm. Vui lòng thử lại hoặc thay đổi yêu cầu.");
+            }
+            return true;
+        }
+
+
         // --- Animation Engine ---
         function runAnimation(plan) {
             if (mainTimeline) mainTimeline.kill();
@@ -758,7 +788,7 @@
 
             displayMessage(`Đang chuẩn bị hoạt ảnh cho: ${plan.title}`);
 
-            // NEW: Update atom legend based on current reaction plan
+            // Update atom legend based on current reaction plan
             updateAtomLegend(plan);
 
 
@@ -856,7 +886,6 @@
             if (!userInput) {
                 displayMessage("Vui lòng nhập các chất tham gia để tạo phản ứng.", true);
                 input.classList.add('input-error');
-                // NEW: Clear legend if input is empty
                 updateAtomLegend(null);
                 return;
             } else {
@@ -875,7 +904,6 @@
                 particles.visible = false;
             }
             toggleDragHint(false);
-            // NEW: Clear legend when AI starts processing a new request
             updateAtomLegend(null);
 
             const prompt = `
@@ -918,18 +946,38 @@
             try {
                 const result = await model.generateContent(prompt);
                 const textResponse = result.response.text();
+                
+                // Cố gắng dọn dẹp và phân tích JSON
                 const cleanedText = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-                const plan = JSON.parse(cleanedText);
+                let plan;
+                try {
+                    plan = JSON.parse(cleanedText);
+                } catch (jsonError) {
+                    console.error("Lỗi phân tích cú pháp JSON:", jsonError);
+                    throw new Error("Phản hồi của AI không phải là JSON hợp lệ. Vui lòng thử lại.");
+                }
+
+                // NEW: Validate the structure of the parsed plan
+                validateReactionPlan(plan);
 
                 runAnimation(plan);
             } catch (error) {
-                console.error("Error parsing or generating animation:", error);
-                displayMessage("Đã có lỗi xảy ra. AI có thể đã trả về định dạng không đúng hoặc gặp lỗi. Vui lòng thử lại.", true);
+                console.error("Lỗi tạo hoạt ảnh hoặc xác thực:", error);
+                // Display a more specific message based on the type of error
+                if (error.message.includes("JSON hợp lệ") || error.message.includes("Phản hồi AI không phải là đối tượng hợp lệ")) {
+                    displayMessage(`Lỗi định dạng dữ liệu từ AI: ${error.message}`, true);
+                } else if (error.message.includes("Thiếu hoặc sai định dạng")) {
+                    displayMessage(`Lỗi cấu trúc dữ liệu từ AI: ${error.message}`, true);
+                } else if (error.message.includes("không chứa chất phản ứng hoặc sản phẩm")) {
+                    displayMessage(`Phản ứng không rõ ràng: ${error.message}`, true);
+                } else {
+                    displayMessage("Đã có lỗi xảy ra trong quá trình tạo hoạt ảnh. Vui lòng thử lại.", true);
+                }
+                
                 if (particles) {
                     particles.visible = true;
                 }
                 toggleDragHint(true);
-                // NEW: Clear legend if AI processing fails
                 updateAtomLegend(null);
             } finally {
                 generateBtn.disabled = false;
@@ -989,14 +1037,14 @@
             generateBtn.addEventListener('click', generateReactionPlan);
             displayMessage("Hãy xem AI dự đoán và diễn họa phản ứng hóa học!");
             toggleDragHint(true);
-            updateAtomLegend(null); // NEW: Initially clear or set up empty legend
+            updateAtomLegend(null); // Initially clear or set up empty legend
         }
 
         modalCloseBtn.addEventListener('click', hideWelcomeModal);
 
         showWelcomeModal();
 
-        // NEW: Atom Legend Functions
+        // Atom Legend Functions
         function updateAtomLegend(plan) {
             atomLegendContent.innerHTML = ''; // Clear existing content
 
@@ -1047,7 +1095,7 @@
             }
         }
 
-        // NEW: Toggle Atom Legend visibility
+        // Toggle Atom Legend visibility
         atomLegendHeader.addEventListener('click', () => {
             atomLegendContent.classList.toggle('expanded');
             atomLegendToggle.style.transform = atomLegendContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
