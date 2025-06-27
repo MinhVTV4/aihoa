@@ -500,6 +500,8 @@
             transition: opacity 0.2s ease-in-out;
             z-index: 50; /* Ensure it's above other elements */
             white-space: nowrap; /* Prevent text wrapping */
+            text-align: left; /* Align text within tooltip */
+            line-height: 1.3;
         }
         #molecule-tooltip.show {
             opacity: 1;
@@ -777,7 +779,26 @@
                     const moleculeData = parentMoleculeGroup.userData.moleculeData;
 
                     if (moleculeData) {
-                        moleculeTooltip.innerHTML = `<strong>${moleculeData.molecule}</strong>`;
+                        let tooltipContent = `<strong>${moleculeData.molecule}</strong>`;
+                        if (moleculeData.name) {
+                            tooltipContent += `<br/>Tên: ${moleculeData.name}`;
+                        }
+                        if (moleculeData.molecularWeight) {
+                            tooltipContent += `<br/>KLPT: ${moleculeData.molecularWeight.toFixed(3)} g/mol`;
+                        }
+                        if (moleculeData.physicalState) {
+                            let stateVietnamese;
+                            switch (moleculeData.physicalState.toLowerCase()) {
+                                case 'gas': stateVietnamese = 'Khí'; break;
+                                case 'liquid': stateVietnamese = 'Lỏng'; break;
+                                case 'solid': stateVietnamese = 'Rắn'; break;
+                                case 'aqueous': stateVietnamese = 'Dung dịch'; break;
+                                default: stateVietnamese = moleculeData.physicalState;
+                            }
+                            tooltipContent += `<br/>Trạng thái: ${stateVietnamese}`;
+                        }
+
+                        moleculeTooltip.innerHTML = tooltipContent;
                         moleculeTooltip.style.left = `${event.clientX + 10}px`;
                         moleculeTooltip.style.top = `${event.clientY + 10}px`;
                         moleculeTooltip.classList.add('show');
@@ -922,7 +943,13 @@
             });
 
             group.position.set(x, y, z);
-            group.userData.moleculeData = moleculeDef; // Store the original molecule definition
+            // Store the original molecule definition including new fields
+            group.userData.moleculeData = {
+                molecule: moleculeDef.molecule,
+                name: moleculeDef.name,
+                molecularWeight: moleculeDef.molecularWeight,
+                physicalState: moleculeDef.physicalState
+            };
             scene.add(group);
             molecules.push(group);
             return group;
@@ -1338,6 +1365,7 @@
             toggleDragHint(false);
             updateAtomLegend(null);
 
+            // UPDATED PROMPT: Requesting 'name', 'molecularWeight', 'physicalState'
             const prompt = `
             Từ các chất tham gia do người dùng cung cấp là: "${userInput}".
             Hãy thực hiện các bước sau một cách tuần tự:
@@ -1348,10 +1376,16 @@
             Đối tượng JSON phải có cấu trúc chính xác như sau:
             - "title": (string) Phương trình hóa học đầy đủ mà bạn đã tạo (ví dụ: "2H2 + O2 -> 2H2O").
             - "isExothermic": (boolean) Phản ứng có tỏa nhiệt hay không (true nếu tỏa nhiệt, false nếu thu nhiệt hoặc không xác định).
-            - "reactants": (array) Một mảng các đối tượng chất phản ứng, mỗi đối tượng có dạng {molecule: string, count: number, atoms: [{symbol: string, color: string}]}.
+            - "reactants": (array) Một mảng các đối tượng chất phản ứng, mỗi đối tượng có dạng {molecule: string, name: string, count: number, molecularWeight: number, physicalState: string, atoms: [{symbol: string, color: string}]}.
                 "molecule" là công thức hóa học (ví dụ "H2O").
+                "name" là tên thông thường của chất (ví dụ "Nước").
+                "molecularWeight" là khối lượng mol (g/mol) của chất.
+                "physicalState" là trạng thái vật lý của chất trong điều kiện phản ứng ('gas', 'liquid', 'solid', 'aqueous').
             - "products": (array) Một mảng các đối tượng sản phẩm, cấu trúc tương tự reactants.
                 "molecule" là công thức hóa học (ví dụ "H2O").
+                "name" là tên thông thường của chất (ví dụ "Nước").
+                "molecularWeight" là khối lượng mol (g/mol) của chất.
+                "physicalState" là trạng thái vật lý của chất trong điều kiện phản ứng ('gas', 'liquid', 'solid', 'aqueous').
             - "animationSteps": (array) Một mảng các bước hoạt ảnh, mỗi bước có dạng {type: string, text: string, ...}.
                 Các loại type có thể có:
                 - 'move_to_center': Các phân tử di chuyển vào trung tâm buồng phản ứng.
