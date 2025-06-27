@@ -502,7 +502,7 @@
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-        import { OutputPass } from 'three/addons/postprocessing/OutputPass.s';
+        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'; // Fixed: changed .s to .js
 
         // --- Firebase, AI, 3D Engine Setup ---
         const firebaseConfig = { apiKey: "AIzaSyBVpguEIjTnIVOk1Ld0u-BGC7nM-pSww_o", authDomain: "aihoa-ac63b.firebaseapp.com", projectId: "aihoa-ac63b", storageBucket: "aihoa-ac63b.firebasestorage.app", messagingSenderId: "241068548961", appId: "1:241068548961:web:33d4126d020e9372d15b20"};
@@ -641,6 +641,7 @@
                     <div class="webgl-error-message">
                         <h2>Lỗi WebGL</h2>
                         <p>Trình duyệt của bạn có thể không hỗ trợ hoặc WebGL đang bị tắt.</p>
+                        <p>Chi tiết lỗi: ${error.message || 'Không rõ.'}</p>
                         <p>Để trải nghiệm hoạt ảnh 3D, vui lòng đảm bảo trình duyệt của bạn được cập nhật và WebGL được bật.</p>
                         <p><a href="https://get.webgl.org/" target="_blank">Kiểm tra trạng thái WebGL của bạn tại đây</a></p>
                     </div>
@@ -970,7 +971,7 @@
                     if (typeof step.duration !== 'number' || step.duration <= 0) {
                         console.warn("Color change step missing or invalid 'duration'. Using default.");
                     }
-                    // NEW: Validate initial_opacity and final_opacity
+                    // Validate initial_opacity and final_opacity
                     if (step.initial_opacity !== undefined && (typeof step.initial_opacity !== 'number' || step.initial_opacity < 0 || step.initial_opacity > 1)) {
                         console.warn("Color change step has invalid 'initial_opacity'. Using default.");
                         step.initial_opacity = undefined;
