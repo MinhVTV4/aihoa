@@ -1464,25 +1464,24 @@
 
             // NEW: Iterate through animation steps and add logic for explanation mode
             plan.animationSteps.forEach((step, index) => {
-                // Add the animation specific to the step first
-                // Use a separate mini-timeline for each step animation, then add explanation logic
+                // Use a separate mini-timeline for each step animation to control it independently
                 const stepTimeline = gsap.timeline();
 
                 if (step.type === 'move_to_center') {
                     // Ensure no glow on atoms at the start of this phase
                     stepTimeline.add(() => {
                         scene.children.flatMap(obj => {
-                            if (obj.isGroup && obj.userData.moleculeData) { // Filter for molecule groups
+                            if (obj.isGroup && obj.userData.moleculeData) { // Check if it's a molecule group
                                 return obj.children.filter(c => c.userData.isAtom);
                             }
                             return [];
                         }).forEach(atomMesh => {
                             atomMesh.material.emissive.set(0x000000); // Set to black
                         });
-                    });
+                    }, 0); // Start immediately at the beginning of this stepTimeline
 
                     // Zoom camera out slightly to show more of the action area with more molecules
-                    stepTimeline.to(camera.position, { z: 20, duration: 2.5, ease: "power2.inOut"}); // Zoom out a bit more
+                    stepTimeline.to(camera.position, { z: 20, duration: 2.5, ease: "power2.inOut"}, 0); // Start at 0
                     const convergenceRadius = 3; // Radius around the center where molecules converge
                     reactantObjects.forEach((m) => {
                         // Move molecules towards random points within a smaller central sphere/cube
@@ -1496,23 +1495,23 @@
                             z: targetZ,
                             duration: 2.5,
                             ease: "power2.inOut"
-                        }, "<"); // Start all at the same time
+                        }, 0); // Start all at the same time
                     });
                 } else if (step.type === 'break_bonds') {
-                    stepTimeline.to(camera.position, { z: 12, duration: 2, ease: "power2.inOut"});
+                    stepTimeline.to(camera.position, { z: 12, duration: 2, ease: "power2.inOut"}, 0);
                     reactantObjects.forEach(m => {
                         // Animate atoms emissive color (reduced glow intensity)
                         m.obj.children.forEach((child) => {
                             if (child.userData.isAtom) { // Only animate atoms
-                                stepTimeline.to(child.material.emissive, { r: 0.3, g: 0.3, b: 0.1, duration: 1, ease: "power2.in" }, "<");
+                                stepTimeline.to(child.material.emissive, { r: 0.3, g: 0.3, b: 0.1, duration: 1, ease: "power2.in" }, 0);
                             }
                         });
                         // Animate bond "snap" and fade out
                         if (m.obj.userData.moleculeData && m.obj.userData.moleculeData.bondMeshes) {
                             m.obj.userData.moleculeData.bondMeshes.forEach(bondMesh => {
                                 // Animate scale down, then fade opacity
-                                stepTimeline.to(bondMesh.scale, { x: 0.2, y: 0.2, z: 0.2, duration: 0.3, ease: "power1.in" }, "<");
-                                stepTimeline.to(bondMesh.material, { opacity: 0, duration: 0.5, ease: "power1.out" }, "<+0.1"); // Start fade slightly after scale starts
+                                stepTimeline.to(bondMesh.scale, { x: 0.2, y: 0.2, z: 0.2, duration: 0.3, ease: "power1.in" }, 0);
+                                stepTimeline.to(bondMesh.material, { opacity: 0, duration: 0.5, ease: "power1.out" }, 0.1); // Start fade slightly after scale starts
                             });
                         }
                         // Animate atoms breaking apart from each other
@@ -1526,7 +1525,7 @@
                                     z: child.position.z + direction.z * 0.8,
                                     duration: 2,
                                     ease: "back.out(4)"
-                                }, "<");
+                                }, 0);
                             }
                         });
                     });
@@ -1543,11 +1542,11 @@
                             'material.emissive.g': 0,
                             'material.emissive.b': 0,
                             duration: 0.1 // Rất nhanh để tắt phát sáng
-                        }, "<"); // Start at the very beginning of this step
+                        }, 0); // Start at the very beginning of this stepTimeline
 
                     // Fade out old reactant atoms and bonds, then remove molecule groups
                     reactantObjects.forEach(m => {
-                        stepTimeline.to(m.obj.children.map(c => c.material), { opacity: 0, duration: 1, onComplete: () => scene.remove(m.obj) }, "<");
+                        stepTimeline.to(m.obj.children.map(c => c.material), { opacity: 0, duration: 1, onComplete: () => scene.remove(m.obj) }, 0);
                     });
 
                     if (plan.isExothermic) {
@@ -1559,7 +1558,7 @@
                             scene.add(shockwave);
                             gsap.to(shockwave.scale, { x: 20, y: 20, z: 20, duration: 2, ease: "power1.out" });
                             gsap.to(shockwave.material, { opacity: 0, duration: 2, ease: "power1.out", onComplete: () => scene.remove(shockwave) });
-                        }, "<+0.5");
+                        }, 0.5); // Relative to start of stepTimeline
 
                     }
 
@@ -1577,12 +1576,12 @@
                             });
 
                             // Animate atoms and bonds to full opacity and scale (for bonds)
-                            stepTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, "<+1"); // Changed to stepTimeline
+                            stepTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, 1); // Start at 1 second mark of stepTimeline
                             
                             // Animate bond scale in for products
                             productObj.children.forEach(c => {
                                 if (c.name.startsWith('bond-')) {
-                                    stepTimeline.to(c.scale, { x: 1, y: 1, z: 1, duration: 1.5, ease: "back.out(1.7)" }, "<"); // Changed to stepTimeline
+                                    stepTimeline.to(c.scale, { x: 1, y: 1, z: 1, duration: 1.5, ease: "back.out(1.7)" }, 1); // Start at 1 second mark of stepTimeline
                                 }
                             });
                             productX += 5;
@@ -1591,11 +1590,11 @@
                 } else if (step.type === 'gas_evolution') { // Handle gas evolution step
                     stepTimeline.add(() => {
                         createGasBubbles(step);
-                    }, "<");
+                    }, 0);
                 } else if (step.type === 'precipitation') { // Handle precipitation step
                     stepTimeline.add(() => {
                         createPrecipitationParticles(step);
-                    }, "<");
+                    }, 0);
                 } else if (step.type === 'color_change') { // Handle color change step
                     stepTimeline.add(() => {
                         if (solutionContainer) {
@@ -1624,24 +1623,24 @@
                                 ease: "power1.inOut"
                             });
                         }
-                    }, "<");
+                    }, 0);
                 }
 
                 // Add the stepTimeline to the mainTimeline
                 mainTimeline.add(stepTimeline);
 
-                // NEW: Explanation Mode Logic
-                if (isExplanationMode) {
-                    mainTimeline.add(() => {
-                        // Pause the main timeline
-                        mainTimeline.pause();
+                // NEW: Explanation Mode Logic - Add a pause and show modal AFTER each stepTimeline completes
+                mainTimeline.add(() => {
+                    // This function runs when the *current* step's animation is complete
+                    if (isExplanationMode) {
+                        mainTimeline.pause(); // Pause the main animation
                         // Display the explanation modal
-                        showExplanationModal(step.text, step.explanation, index + 1); // Use step.text for title, step.explanation for content
-                    }, ">"); // Add this immediately after the current step's animations complete
-                } else {
-                    // If not in explanation mode, simply display the info text without pausing
-                    mainTimeline.add(() => { displayMessage(step.text || '...'); });
-                }
+                        showExplanationModal(step.text || `Bước ${index + 1}`, step.explanation, index + 1);
+                    } else {
+                        // If not in explanation mode, just display the info text briefly
+                        displayMessage(step.text || '...');
+                    }
+                }, ">"); // Position this immediately after the `stepTimeline` has finished
             });
         }
 
