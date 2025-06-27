@@ -120,6 +120,8 @@
             align-items: center;
             gap: 1rem;
             margin-top: 0.5rem;
+            flex-wrap: wrap; /* Cho phép các nút xuống dòng trên màn hình nhỏ */
+            justify-content: center; /* Căn giữa các nút */
         }
         .icon-btn {
             background: transparent;
@@ -147,12 +149,81 @@
             box-shadow: none;
         }
 
+        /* Thêm style cho thanh trượt tốc độ và thời gian */
+        .speed-control-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.5rem; /* Khoảng cách với thanh progress bar */
+        }
+        .speed-btn {
+            background-color: var(--panel-bg);
+            color: #e5e7eb;
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.5rem;
+            border: 1px solid #6b7280;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.8rem;
+        }
+        .speed-btn:hover:not(.active) {
+            border-color: var(--accent-color);
+            color: white;
+        }
+        .speed-btn.active {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: white;
+            font-weight: 600;
+        }
+        .speed-btn:disabled {
+            background-color: #4b5563;
+            border-color: #4b5563;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        #timeline-slider {
+            width: 100%;
+            -webkit-appearance: none; /* Ẩn giao diện mặc định */
+            height: 8px;
+            background: #4b5563;
+            border-radius: 99px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            margin-top: 1rem; /* Khoảng cách với các nút điều khiển */
+        }
+        #timeline-slider:hover {
+            opacity: 1;
+        }
+        #timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.5);
+        }
+        #timeline-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.5);
+        }
+
+
         #progress-container {
             flex-grow: 1;
             height: 8px;
             background: #4b5563;
             border-radius: 99px;
             overflow: hidden;
+            display: none; /* Ẩn thanh progress bar cũ, thay bằng slider mới */
         }
         #progress-bar {
             width: 0%;
@@ -217,7 +288,6 @@
         </div>
         <div class="ui-panel">
             <div class="input-group">
-                <!-- THAY ĐỔI: Từ input sang textarea -->
                 <textarea id="equation-input" rows="3" placeholder="Nhập các chất tham gia (vd: H2 + O2), hoặc phương trình (vd: 2H2 + O2 -> 2H2O), hoặc mô tả (vd: Phản ứng đốt cháy Metan)..."></textarea>
                 <button id="generate-btn" class="main-btn">
                     Tạo Phản ứng
@@ -227,10 +297,22 @@
              <div id="controls-bar">
                 <button id="play-pause-btn" class="icon-btn" disabled>▶️</button>
                 <button id="restart-btn" class="icon-btn" disabled>🔄</button>
+                
+                <!-- THAY ĐỔI: Thêm nhóm điều khiển tốc độ -->
+                <div class="speed-control-group">
+                    <button class="speed-btn" data-speed="0.5" disabled>0.5x</button>
+                    <button class="speed-btn active" data-speed="1" disabled>1x</button>
+                    <button class="speed-btn" data-speed="2" disabled>2x</button>
+                </div>
+
+                <!-- Thanh progress bar cũ (giờ ẩn đi) -->
                 <div id="progress-container">
                     <div id="progress-bar"></div>
                 </div>
             </div>
+            <!-- THAY ĐỔI: Thêm thanh trượt thời gian -->
+            <input type="range" id="timeline-slider" min="0" max="100" value="0" disabled>
+
             <p id="info-text">Hãy xem AI dự đoán và diễn họa phản ứng hóa học!</p>
         </div>
     </div>
@@ -344,8 +426,10 @@
         const infoText = document.getElementById('info-text');
         const playPauseBtn = document.getElementById('play-pause-btn');
         const restartBtn = document.getElementById('restart-btn');
-        const progressBar = document.getElementById('progress-bar');
+        // const progressBar = document.getElementById('progress-bar'); // Sẽ không dùng thanh này nữa
         const loadingSpinner = document.getElementById('loading-spinner');
+        const speedButtons = document.querySelectorAll('.speed-btn'); // Lấy tất cả các nút tốc độ
+        const timelineSlider = document.getElementById('timeline-slider'); // Thanh trượt thời gian
 
         function clearScene() {
             // Loại bỏ tất cả các phân tử khỏi scene và giải phóng bộ nhớ
@@ -402,19 +486,25 @@
             // Khởi tạo GSAP Timeline
             mainTimeline = gsap.timeline({
                 onUpdate: () => {
-                    progressBar.style.width = `${mainTimeline.progress() * 100}%`;
+                    // Cập nhật giá trị thanh trượt dựa trên tiến độ timeline
+                    timelineSlider.value = mainTimeline.progress() * 100;
                     playPauseBtn.textContent = mainTimeline.paused() ? "▶️" : "⏸️";
                 },
                 onComplete: () => {
                     infoText.innerText = "Hoạt ảnh hoàn tất!";
                     playPauseBtn.textContent = "▶️";
                     playPauseBtn.disabled = true; // Vô hiệu hóa nút play/pause khi hoàn thành
+                    timelineSlider.disabled = true; // Vô hiệu hóa thanh trượt khi hoàn thành
+                    speedButtons.forEach(btn => btn.disabled = true); // Vô hiệu hóa nút tốc độ
                 }
             });
 
-            // Kích hoạt các nút điều khiển
+            // Kích hoạt các nút điều khiển và thanh trượt
             playPauseBtn.disabled = false;
             restartBtn.disabled = false;
+            timelineSlider.disabled = false;
+            speedButtons.forEach(btn => btn.disabled = false); // Kích hoạt nút tốc độ
+
             playPauseBtn.textContent = "⏸️"; // Đặt thành pause ban đầu
 
             const reactantObjects = [];
@@ -501,10 +591,14 @@
                 input.classList.remove('input-error'); // Xóa class lỗi nếu có
             }
 
-
             infoText.innerHTML = 'AI đang tư duy... 🧠';
             generateBtn.disabled = true; // Vô hiệu hóa nút
             loadingSpinner.classList.remove('hidden'); // Hiển thị spinner
+            // Vô hiệu hóa các nút điều khiển hoạt ảnh khi AI đang xử lý
+            playPauseBtn.disabled = true;
+            restartBtn.disabled = true;
+            timelineSlider.disabled = true;
+            speedButtons.forEach(btn => btn.disabled = true);
 
             // Prompt mới cho AI
             const prompt = `
@@ -573,6 +667,27 @@
         restartBtn.addEventListener('click', () => {
             if (mainTimeline) {
                 mainTimeline.restart(); // Khởi động lại hoạt ảnh
+            }
+        });
+
+        // Event Listeners cho các nút tốc độ
+        speedButtons.forEach(button => {
+            button.addEventListener('click', (event) => {
+                const speed = parseFloat(event.target.dataset.speed);
+                if (mainTimeline) {
+                    mainTimeline.timeScale(speed); // Đặt tốc độ timeline
+                }
+                // Cập nhật trạng thái active cho nút tốc độ
+                speedButtons.forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+            });
+        });
+
+        // Event Listener cho thanh trượt thời gian
+        timelineSlider.addEventListener('input', () => {
+            if (mainTimeline) {
+                // Đặt tiến độ timeline dựa trên giá trị thanh trượt
+                mainTimeline.progress(timelineSlider.value / 100);
             }
         });
 
