@@ -376,6 +376,59 @@
             box-shadow: 0 0 25px rgba(139, 92, 246, 0.6);
             transform: translateY(-3px);
         }
+
+        /* NEW: Styles for Atom Legend */
+        .atom-legend {
+            background-color: var(--light-bg);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            margin-top: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .atom-legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+        .atom-legend-header:hover {
+            color: #a78bfa;
+        }
+        .atom-legend-toggle {
+            font-size: 1.5rem;
+            line-height: 1;
+            transition: transform 0.2s ease-in-out;
+        }
+        .atom-legend-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+            display: grid; /* Use grid for layout */
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Responsive columns */
+            gap: 0.5rem;
+            padding-top: 0; /* Initially no padding */
+        }
+        .atom-legend-content.expanded {
+            max-height: 200px; /* Max height when expanded (adjust as needed) */
+            overflow-y: auto; /* Enable scrolling if content overflows */
+            padding-top: 0.75rem; /* Add padding when expanded */
+        }
+        .atom-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0;
+        }
+        .atom-color-circle {
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0; /* Prevent circle from shrinking */
+        }
     </style>
 </head>
 <body>
@@ -409,6 +462,17 @@
                 </div>
             </div>
             <input type="range" id="timeline-slider" min="0" max="100" value="0" disabled>
+
+            <!-- NEW: Atom Color Legend Section -->
+            <div id="atom-legend" class="atom-legend">
+                <div class="atom-legend-header" id="atom-legend-header">
+                    <span>Chú thích màu nguyên tử</span>
+                    <span class="atom-legend-toggle">▼</span>
+                </div>
+                <div class="atom-legend-content" id="atom-legend-content">
+                    <!-- Atom items will be dynamically inserted here -->
+                </div>
+            </div>
 
             <p id="info-text">Hãy xem AI dự đoán và diễn họa phản ứng hóa học!</p>
         </div>
@@ -580,10 +644,35 @@
         const loadingSpinner = document.getElementById('loading-spinner');
         const speedButtons = document.querySelectorAll('.speed-btn');
         const timelineSlider = document.getElementById('timeline-slider');
-        const dragHint = document.getElementById('drag-hint'); // New: Reference to drag hint element
+        const dragHint = document.getElementById('drag-hint');
 
         const welcomeModalOverlay = document.getElementById('welcome-modal-overlay');
         const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        // NEW: Atom Legend Elements
+        const atomLegendHeader = document.getElementById('atom-legend-header');
+        const atomLegendContent = document.getElementById('atom-legend-content');
+        const atomLegendToggle = atomLegendHeader.querySelector('.atom-legend-toggle');
+
+        // NEW: Define atom colors (must match what's in the AI prompt)
+        const ATOM_COLORS = [
+            { symbol: 'H', color: '#FFFFFF' }, // Trắng
+            { symbol: 'O', color: '#FF6B6B' }, // Đỏ
+            { symbol: 'C', color: '#333333' }, // Xám đen
+            { symbol: 'N', color: '#6B9AFF' }, // Xanh dương
+            { symbol: 'Fe', color: '#A19D94' },// Xám kim loại
+            { symbol: 'S', color: '#FFF36B' }, // Vàng
+            { symbol: 'Cl', color: '#6BFF8B' },// Xanh lá
+            { symbol: 'Na', color: '#B06BFF' },// Tím
+            { symbol: 'K', color: '#8A2BE2' }, // Tím nhạt
+            { symbol: 'Mg', color: '#BDB76B' },// Vàng xanh
+            { symbol: 'Ca', color: '#DDA0DD' },// Tím hoa cà
+            { symbol: 'Al', color: '#C0C0C0' },// Bạc
+            { symbol: 'P', color: '#FFA500' }, // Cam
+            { symbol: 'Br', color: '#A52A2A' },// Nâu
+            { symbol: 'I', color: '#4B0082' }  // Chàm
+        ];
+
 
         let currentMessageTimeout;
         function displayMessage(message, isError = false) {
@@ -607,7 +696,6 @@
             }
         }
 
-        // New: Function to show/hide drag hint
         function toggleDragHint(show) {
             if (dragHint) {
                 if (show) {
@@ -617,7 +705,6 @@
                 }
             }
         }
-
 
         function clearScene() {
             molecules.forEach(m => {
@@ -666,7 +753,7 @@
             if (particles) {
                 particles.visible = false;
             }
-            toggleDragHint(false); // New: Hide drag hint when animation starts
+            toggleDragHint(false);
 
             displayMessage(`Đang chuẩn bị hoạt ảnh cho: ${plan.title}`);
 
@@ -684,7 +771,7 @@
                     if (particles) {
                         particles.visible = true;
                     }
-                    toggleDragHint(true); // New: Show drag hint when animation completes
+                    toggleDragHint(true);
                 }
             });
 
@@ -780,7 +867,7 @@
             if (particles) {
                 particles.visible = false;
             }
-            toggleDragHint(false); // New: Hide drag hint when AI is processing
+            toggleDragHint(false);
 
             const prompt = `
             Từ các chất tham gia do người dùng cung cấp là: "${userInput}".
@@ -832,7 +919,7 @@
                 if (particles) {
                     particles.visible = true;
                 }
-                toggleDragHint(true); // New: Show drag hint if AI processing fails
+                toggleDragHint(true);
             } finally {
                 generateBtn.disabled = false;
                 loadingSpinner.classList.add('hidden');
@@ -890,12 +977,37 @@
             init3D();
             generateBtn.addEventListener('click', generateReactionPlan);
             displayMessage("Hãy xem AI dự đoán và diễn họa phản ứng hóa học!");
-            toggleDragHint(true); // New: Show drag hint initially when app is ready
+            toggleDragHint(true);
+            populateAtomLegend(); // NEW: Populate the legend on app initialization
         }
 
         modalCloseBtn.addEventListener('click', hideWelcomeModal);
 
         showWelcomeModal();
+
+        // NEW: Atom Legend Functions
+        function populateAtomLegend() {
+            atomLegendContent.innerHTML = ''; // Clear existing content
+            ATOM_COLORS.forEach(atom => {
+                const item = document.createElement('div');
+                item.classList.add('atom-legend-item');
+                item.innerHTML = `
+                    <div class="atom-color-circle" style="background-color: ${atom.color};"></div>
+                    <span>${atom.symbol}</span>
+                `;
+                atomLegendContent.appendChild(item);
+            });
+        }
+
+        // NEW: Toggle Atom Legend visibility
+        atomLegendHeader.addEventListener('click', () => {
+            atomLegendContent.classList.toggle('expanded');
+            atomLegendToggle.style.transform = atomLegendContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+
+        // Initial state: collapse the legend by default
+        atomLegendContent.classList.remove('expanded');
+        atomLegendToggle.style.transform = 'rotate(0deg)';
     </script>
 </body>
 </html>
