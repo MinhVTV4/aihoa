@@ -67,8 +67,9 @@
             gap: 1rem;
             align-items: center;
         }
+        /* Cập nhật style cho textarea */
         #equation-input {
-            flex-grow: 1; /* Cho phép input mở rộng */
+            flex-grow: 1; /* Cho phép textarea mở rộng */
             background: var(--light-bg);
             border: 1px solid var(--accent-color);
             border-radius: 0.5rem;
@@ -76,10 +77,18 @@
             color: #fff;
             outline: none; /* Bỏ viền outline mặc định */
             transition: border-color 0.3s; /* Hiệu ứng chuyển màu viền */
+            resize: vertical; /* Cho phép thay đổi kích thước theo chiều dọc */
+            min-height: 80px; /* Chiều cao tối thiểu */
         }
         #equation-input:focus {
             border-color: #a78bfa; /* Màu viền khi focus */
         }
+        /* Class mới cho trạng thái lỗi */
+        #equation-input.input-error {
+            border-color: var(--danger-color);
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5); /* Shadow đỏ cho lỗi */
+        }
+
         .main-btn {
             background-image: linear-gradient(to right, #6366f1, var(--accent-color));
             color: white;
@@ -208,7 +217,8 @@
         </div>
         <div class="ui-panel">
             <div class="input-group">
-                <input id="equation-input" type="text" value="Hydro và Oxy" placeholder="Nhập các chất tham gia (vd: Sắt và Oxi)...">
+                <!-- THAY ĐỔI: Từ input sang textarea -->
+                <textarea id="equation-input" rows="3" placeholder="Nhập các chất tham gia (vd: H2 + O2), hoặc phương trình (vd: 2H2 + O2 -> 2H2O), hoặc mô tả (vd: Phản ứng đốt cháy Metan)..."></textarea>
                 <button id="generate-btn" class="main-btn">
                     Tạo Phản ứng
                     <div id="loading-spinner" class="spinner hidden"></div>
@@ -335,7 +345,7 @@
         const playPauseBtn = document.getElementById('play-pause-btn');
         const restartBtn = document.getElementById('restart-btn');
         const progressBar = document.getElementById('progress-bar');
-        const loadingSpinner = document.getElementById('loading-spinner'); // Spinner mới
+        const loadingSpinner = document.getElementById('loading-spinner');
 
         function clearScene() {
             // Loại bỏ tất cả các phân tử khỏi scene và giải phóng bộ nhớ
@@ -481,11 +491,16 @@
                 infoText.innerText = "Lỗi: Engine AI hoặc môi trường 3D chưa sẵn sàng.";
                 return;
             }
-            const userInput = input.value;
+            const userInput = input.value.trim(); // Lấy giá trị và loại bỏ khoảng trắng dư thừa
             if (!userInput) {
-                infoText.innerText = "Vui lòng nhập các chất tham gia.";
+                // THAY ĐỔI: Phản hồi lỗi khi input rỗng
+                infoText.innerText = "Vui lòng nhập các chất tham gia để tạo phản ứng.";
+                input.classList.add('input-error'); // Thêm class lỗi
                 return;
+            } else {
+                input.classList.remove('input-error'); // Xóa class lỗi nếu có
             }
+
 
             infoText.innerHTML = 'AI đang tư duy... 🧠';
             generateBtn.disabled = true; // Vô hiệu hóa nút
