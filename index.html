@@ -390,7 +390,6 @@
             background-color: var(--light-bg);
             border-radius: 0.75rem;
             padding: 0.75rem 1rem;
-            /* margin-top: 1rem; Removed from here, now outside ui-panel */
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
         .atom-legend-header {
@@ -487,6 +486,24 @@
         .suggestion-item:hover {
             background-color: var(--light-bg);
         }
+
+        /* NEW: Styles for Molecule Tooltip */
+        #molecule-tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            pointer-events: none; /* Allow interaction with elements below */
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            z-index: 50; /* Ensure it's above other elements */
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+        #molecule-tooltip.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -550,6 +567,9 @@
         </div>
     </div>
 
+    <!-- Molecule Tooltip -->
+    <div id="molecule-tooltip"></div>
+
     <!-- Imports -->
     <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/" } }</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -581,9 +601,15 @@
 
         const chamber = document.getElementById('reaction-chamber');
         let renderer, scene, camera, controls, composer, mainTimeline;
-        let molecules = [];
+        let molecules = []; // Stores THREE.Group objects representing molecules
         let particles;
         let solutionContainer; // Declare solution container globally
+
+        // NEW: For molecule tooltip
+        const moleculeTooltip = document.getElementById('molecule-tooltip');
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let hoveredMolecule = null;
 
         function init3D() {
             chamber.innerHTML = ''; // Clear old WebGL error content if any
@@ -694,6 +720,16 @@
                     composer.setSize(chamber.clientWidth, chamber.clientHeight);
                 });
 
+                // NEW: Mouse event listener for raycasting and tooltip
+                chamber.addEventListener('mousemove', onChamberMouseMove, false);
+                chamber.addEventListener('mouseleave', () => {
+                    moleculeTooltip.classList.remove('show');
+                    if (hoveredMolecule) {
+                         // Reset any highlighting if applied
+                        hoveredMolecule = null;
+                    }
+                });
+
             } catch (error) {
                 console.error("WebGL initialization error:", error);
                 // Display more user-friendly error message
@@ -710,6 +746,54 @@
                 throw new Error("WebGL init failed");
             }
         }
+
+        // NEW: Mouse move handler for raycasting
+        function onChamberMouseMove(event) {
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            const rect = chamber.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            // Get all atom meshes from all molecules
+            const allAtomMeshes = [];
+            molecules.forEach(molGroup => {
+                molGroup.children.forEach(atomMesh => {
+                    allAtomMeshes.push(atomMesh);
+                });
+            });
+
+            const intersects = raycaster.intersectObjects(allAtomMeshes);
+
+            if (intersects.length > 0) {
+                // Find the parent group (molecule) of the intersected atom
+                const intersectedAtom = intersects[0].object;
+                const parentMoleculeGroup = intersectedAtom.parent;
+
+                // Check if it's a new hovered molecule or the same one
+                if (hoveredMolecule !== parentMoleculeGroup) {
+                    hoveredMolecule = parentMoleculeGroup;
+                    const moleculeData = parentMoleculeGroup.userData.moleculeData;
+
+                    if (moleculeData) {
+                        moleculeTooltip.innerHTML = `<strong>${moleculeData.molecule}</strong>`;
+                        moleculeTooltip.style.left = `${event.clientX + 10}px`;
+                        moleculeTooltip.style.top = `${event.clientY + 10}px`;
+                        moleculeTooltip.classList.add('show');
+                    } else {
+                        moleculeTooltip.classList.remove('show');
+                    }
+                }
+            } else {
+                // No intersection, hide tooltip
+                if (hoveredMolecule) {
+                    moleculeTooltip.classList.remove('show');
+                    hoveredMolecule = null;
+                }
+            }
+        }
+
 
         // --- Core Application Logic ---
         const generateBtn = document.getElementById('generate-btn');
@@ -814,6 +898,7 @@
             }
         }
 
+        // Modified: Store moleculeDef in group.userData
         function drawMolecule3D(moleculeDef, x, y, z) {
             const group = new THREE.Group();
             const atomRadius = 0.5;
@@ -837,6 +922,7 @@
             });
 
             group.position.set(x, y, z);
+            group.userData.moleculeData = moleculeDef; // Store the original molecule definition
             scene.add(group);
             molecules.push(group);
             return group;
@@ -1065,6 +1151,7 @@
                 particles.visible = false;
             }
             toggleDragHint(false);
+            moleculeTooltip.classList.remove('show'); // Hide tooltip during animation
 
             displayMessage(`Đang chuẩn bị hoạt ảnh cho: ${plan.title}`);
 
@@ -1243,6 +1330,7 @@
             timelineSlider.disabled = true;
             speedButtons.forEach(btn => btn.disabled = true);
             clearInputBtn.classList.add('hidden'); // Hide clear button during processing
+            moleculeTooltip.classList.remove('show'); // Hide tooltip during generation
 
             if (particles) {
                 particles.visible = false;
@@ -1261,7 +1349,9 @@
             - "title": (string) Phương trình hóa học đầy đủ mà bạn đã tạo (ví dụ: "2H2 + O2 -> 2H2O").
             - "isExothermic": (boolean) Phản ứng có tỏa nhiệt hay không (true nếu tỏa nhiệt, false nếu thu nhiệt hoặc không xác định).
             - "reactants": (array) Một mảng các đối tượng chất phản ứng, mỗi đối tượng có dạng {molecule: string, count: number, atoms: [{symbol: string, color: string}]}.
+                "molecule" là công thức hóa học (ví dụ "H2O").
             - "products": (array) Một mảng các đối tượng sản phẩm, cấu trúc tương tự reactants.
+                "molecule" là công thức hóa học (ví dụ "H2O").
             - "animationSteps": (array) Một mảng các bước hoạt ảnh, mỗi bước có dạng {type: string, text: string, ...}.
                 Các loại type có thể có:
                 - 'move_to_center': Các phân tử di chuyển vào trung tâm buồng phản ứng.
