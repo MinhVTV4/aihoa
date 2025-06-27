@@ -14,6 +14,7 @@
             --panel-bg: #374151;
             --accent-color: #8b5cf6; /* Accent purple color */
             --danger-color: #ef4444; /* Red color for errors */
+            --success-color: #22c55e; /* Green color for success */
         }
         body {
             font-family: 'Inter', sans-serif;
@@ -94,6 +95,7 @@
             display: flex;
             gap: 1rem;
             align-items: center;
+            position: relative; /* Needed for suggestions list positioning */
         }
         /* Update style for textarea */
         #equation-input {
@@ -104,17 +106,23 @@
             padding: 0.75rem;
             color: #fff;
             outline: none; /* Remove default outline */
-            transition: border-color 0.3s; /* Border color transition */
+            transition: border-color 0.3s, box-shadow 0.3s; /* Border color and shadow transition */
             resize: vertical; /* Allow vertical resizing */
             min-height: 80px; /* Minimum height */
         }
         #equation-input:focus {
             border-color: #a78bfa; /* Border color on focus */
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5); /* Accent shadow on focus */
         }
         /* New class for error state */
         #equation-input.input-error {
             border-color: var(--danger-color);
             box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5); /* Red shadow for error */
+        }
+        /* New class for valid state */
+        #equation-input.input-valid {
+            border-color: var(--success-color);
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.5); /* Green shadow for valid */
         }
 
         .main-btn {
@@ -429,6 +437,56 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             flex-shrink: 0; /* Prevent circle from shrinking */
         }
+
+        /* Styles for new clear button */
+        .clear-input-btn {
+            background: transparent;
+            border: none;
+            color: #d1d5db;
+            font-size: 1.5rem;
+            cursor: pointer;
+            position: absolute;
+            right: 0.75rem; /* Position inside input field */
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 5; /* Ensure it's above the textarea */
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            display: none; /* Hidden by default */
+        }
+        .clear-input-btn:hover {
+            opacity: 1;
+            color: white;
+        }
+
+        /* Styles for suggestions list */
+        .suggestions-list {
+            position: absolute;
+            top: 100%; /* Position below the input */
+            left: 0;
+            right: 0;
+            background-color: var(--panel-bg);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+            border: 1px solid var(--accent-color);
+            display: none; /* Hidden by default */
+            margin-top: 0.5rem; /* Space between input and list */
+        }
+        .suggestions-list.show {
+            display: block;
+        }
+        .suggestion-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            color: #d1d5db;
+            transition: background-color 0.2s;
+        }
+        .suggestion-item:hover {
+            background-color: var(--light-bg);
+        }
     </style>
 </head>
 <body>
@@ -454,10 +512,12 @@
         <div class="ui-panel">
             <div class="input-group">
                 <textarea id="equation-input" rows="3" placeholder="Nhập các chất tham gia (vd: H2 + O2), hoặc phương trình (vd: 2H2 + O2 -> 2H2O), hoặc mô tả (vd: Phản ứng đốt cháy Metan)..."></textarea>
+                <button id="clear-input-btn" class="clear-input-btn hidden">✖</button>
                 <button id="generate-btn" class="main-btn">
                     Tạo Phản ứng
                     <div id="loading-spinner" class="spinner hidden"></div>
                 </button>
+                <div id="suggestions-list" class="suggestions-list"></div>
             </div>
              <div id="controls-bar">
                 <button id="play-pause-btn" class="icon-btn" disabled>▶️</button>
@@ -502,7 +562,7 @@
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'; // Fixed: changed .s to .js
+        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
         // --- Firebase, AI, 3D Engine Setup ---
         const firebaseConfig = { apiKey: "AIzaSyBVpguEIjTnIVOk1Ld0u-BGC7nM-pSww_o", authDomain: "aihoa-ac63b.firebaseapp.com", projectId: "aihoa-ac63b", storageBucket: "aihoa-ac63b.firebasestorage.app", messagingSenderId: "241068548961", appId: "1:241068548961:web:33d4126d020e9372d15b20"};
@@ -661,6 +721,8 @@
         const speedButtons = document.querySelectorAll('.speed-btn');
         const timelineSlider = document.getElementById('timeline-slider');
         const dragHint = document.getElementById('drag-hint');
+        const clearInputBtn = document.getElementById('clear-input-btn'); // New: Clear button
+        const suggestionsList = document.getElementById('suggestions-list'); // New: Suggestions list
 
         const welcomeModalOverlay = document.getElementById('welcome-modal-overlay');
         const modalCloseBtn = document.getElementById('modal-close-btn');
@@ -687,6 +749,12 @@
             { symbol: 'P', color: '#FFA500' }, // Cam
             { symbol: 'Br', color: '#A52A2A' },// Nâu
             { symbol: 'I', color: '#4B0082' }  // Chàm
+        ];
+
+        // New: Common chemical suggestions
+        const COMMON_CHEMICALS = [
+            'H2O', 'CO2', 'O2', 'N2', 'H2', 'CH4', 'C2H5OH', 'NaCl', 'HCl', 'H2SO4',
+            'NaOH', 'KMnO4', 'NH3', 'CaO', 'Fe2O3', 'SO2', 'NO2', 'C6H12O6', 'C12H22O11'
         ];
 
 
@@ -1159,6 +1227,7 @@
             const userInput = input.value.trim();
             if (!userInput) {
                 displayMessage("Vui lòng nhập các chất tham gia để tạo phản ứng.", true);
+                input.classList.remove('input-valid'); // Ensure valid state is removed
                 input.classList.add('input-error');
                 updateAtomLegend(null);
                 return;
@@ -1173,6 +1242,7 @@
             restartBtn.disabled = true;
             timelineSlider.disabled = true;
             speedButtons.forEach(btn => btn.disabled = true);
+            clearInputBtn.classList.add('hidden'); // Hide clear button during processing
 
             if (particles) {
                 particles.visible = false;
@@ -1272,8 +1342,86 @@
             } finally {
                 generateBtn.disabled = false;
                 loadingSpinner.classList.add('hidden');
+                // Show clear button if input has content after processing
+                if (input.value.trim().length > 0) {
+                    clearInputBtn.classList.remove('hidden');
+                }
             }
         }
+
+        // New: Input validation and suggestions
+        function validateInput(value) {
+            // Very basic validation for demonstration.
+            // A more robust validation would require a chemical parser.
+            // This checks for common chemical symbols and basic arithmetic/equation patterns.
+            const chemicalRegex = /^[A-Z][a-z]?[0-9]*(?:[\+\-]\s*[A-Z][a-z]?[0-9]*)*(\s*->\s*[A-Z][a-z]?[0-9]*(?:[\+\-]\s*[A-Z][a-z]?[0-9]*)*)?$/;
+            return chemicalRegex.test(value.replace(/\s/g, '')); // Remove spaces for simpler regex
+        }
+
+        function showSuggestions(query) {
+            suggestionsList.innerHTML = '';
+            if (query.length < 1) { // Show suggestions only after user types a bit
+                suggestionsList.classList.remove('show');
+                return;
+            }
+
+            const filteredSuggestions = COMMON_CHEMICALS.filter(chem =>
+                chem.toLowerCase().includes(query.toLowerCase())
+            );
+
+            if (filteredSuggestions.length > 0) {
+                filteredSuggestions.forEach(suggestion => {
+                    const item = document.createElement('div');
+                    item.classList.add('suggestion-item');
+                    item.textContent = suggestion;
+                    item.addEventListener('click', () => {
+                        input.value = suggestion;
+                        suggestionsList.classList.remove('show');
+                        updateInputState(); // Validate after selecting a suggestion
+                    });
+                    suggestionsList.appendChild(item);
+                });
+                suggestionsList.classList.add('show');
+            } else {
+                suggestionsList.classList.remove('show');
+            }
+        }
+
+        function updateInputState() {
+            const value = input.value.trim();
+            if (value.length > 0) {
+                clearInputBtn.classList.remove('hidden');
+                if (validateInput(value)) {
+                    input.classList.remove('input-error');
+                    input.classList.add('input-valid');
+                } else {
+                    input.classList.remove('input-valid');
+                    input.classList.add('input-error');
+                }
+            } else {
+                clearInputBtn.classList.add('hidden');
+                input.classList.remove('input-error', 'input-valid');
+            }
+        }
+
+        input.addEventListener('input', () => {
+            updateInputState();
+            showSuggestions(input.value);
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!input.contains(event.target) && !suggestionsList.contains(event.target)) {
+                suggestionsList.classList.remove('show');
+            }
+        });
+
+        clearInputBtn.addEventListener('click', () => {
+            input.value = '';
+            updateInputState(); // Update state after clearing
+            suggestionsList.classList.remove('show'); // Hide suggestions
+            displayMessage("Đầu vào đã được xóa.");
+        });
 
         playPauseBtn.addEventListener('click', () => {
             if (mainTimeline) {
@@ -1328,6 +1476,7 @@
             displayMessage("Hãy xem AI dự đoán và diễn họa phản ứng hóa học!");
             toggleDragHint(true);
             updateAtomLegend(null); // Initially clear or set up empty legend
+            updateInputState(); // Initial check for input field
         }
 
         modalCloseBtn.addEventListener('click', hideWelcomeModal);
