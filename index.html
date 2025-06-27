@@ -184,6 +184,14 @@
             cursor: not-allowed;
             box-shadow: none;
         }
+        /* New style for the explanation mode toggle button to make it look distinct */
+        #explanation-mode-toggle.active {
+            background-image: linear-gradient(to right, var(--accent-color), #6366f1);
+            color: white;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+        }
+
 
         /* Add style for speed and timeline sliders */
         .speed-control-group {
@@ -506,6 +514,69 @@
         #molecule-tooltip.show {
             opacity: 1;
         }
+
+        /* NEW: Styles for Explanation Modal/Box */
+        .explanation-modal-overlay {
+            position: absolute; /* Position relative to #reaction-chamber */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent overlay */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100; /* Above 3D scene but below welcome modal */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .explanation-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .explanation-box {
+            background-color: var(--panel-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            transform: translateY(20px); /* Start slightly below */
+            transition: transform 0.3s ease-in-out;
+            color: #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .explanation-modal-overlay.show .explanation-box {
+            transform: translateY(0); /* Slide into place */
+        }
+        .explanation-box h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+        }
+        .explanation-box p {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+        .explanation-continue-btn {
+            background-image: linear-gradient(to right, #6366f1, var(--accent-color));
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            align-self: center; /* Center the button */
+        }
+        .explanation-continue-btn:hover {
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body>
@@ -515,6 +586,15 @@
             <!-- WebGL error message will be inserted here if needed -->
             <!-- New: Drag hint for 3D interaction -->
             <div id="drag-hint">Kéo để xoay</div>
+
+            <!-- NEW: Explanation Modal Overlay (inside reaction-chamber for positioning) -->
+            <div id="explanation-modal-overlay" class="explanation-modal-overlay">
+                <div class="explanation-box">
+                    <h3 id="explanation-title">Bước 1: Di chuyển vào trung tâm</h3>
+                    <p id="explanation-text">Các phân tử chất phản ứng di chuyển lại gần nhau, chuẩn bị cho quá trình va chạm và phản ứng.</p>
+                    <button id="explanation-continue-btn" class="explanation-continue-btn">Tiếp tục</button>
+                </div>
+            </div>
         </div>
 
         <!-- NEW: Atom Color Legend Section - Moved here -->
@@ -542,6 +622,9 @@
                 <button id="play-pause-btn" class="icon-btn" disabled>▶️</button>
                 <button id="restart-btn" class="icon-btn" disabled>🔄</button>
                 
+                <!-- NEW: Explanation Mode Toggle Button -->
+                <button id="explanation-mode-toggle" class="icon-btn">📚</button>
+
                 <div class="speed-control-group">
                     <button class="speed-btn" data-speed="0.5" disabled>0.5x</button>
                     <button class="speed-btn active" data-speed="1" disabled>1x</button>
@@ -834,6 +917,14 @@
 
         const welcomeModalOverlay = document.getElementById('welcome-modal-overlay');
         const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        // NEW: Explanation Mode elements
+        const explanationModeToggle = document.getElementById('explanation-mode-toggle');
+        const explanationModalOverlay = document.getElementById('explanation-modal-overlay');
+        const explanationTitle = document.getElementById('explanation-title');
+        const explanationText = document.getElementById('explanation-text');
+        const explanationContinueBtn = document.getElementById('explanation-continue-btn');
+        let isExplanationMode = false; // State variable for explanation mode
 
         // Atom Legend Elements
         const atomLegendHeader = document.getElementById('atom-legend-header');
@@ -1216,6 +1307,16 @@
 
             // Validate specific animation step types if they exist
             for (const step of plan.animationSteps) {
+                if (typeof step.text !== 'string' || step.text.trim() === '') { // Validate general text
+                    console.warn(`Animation step missing 'text' field.`);
+                }
+                // NEW: Validate explanation field for explanation mode
+                if (typeof step.explanation !== 'string' || step.explanation.trim() === '') {
+                    console.warn(`Animation step missing 'explanation' field. Falling back to 'text' for explanation mode.`);
+                    step.explanation = step.text; // Fallback if explanation is missing
+                }
+
+
                 if (step.type === 'gas_evolution') {
                     if (typeof step.gas_color !== 'string' || !step.gas_color.startsWith('#')) {
                         console.warn("Gas evolution step missing or invalid 'gas_color'. Using default.");
@@ -1300,6 +1401,7 @@
             }
             toggleDragHint(false);
             moleculeTooltip.classList.remove('show'); // Hide tooltip during animation
+            hideExplanationModal(); // Ensure explanation modal is hidden when a new animation starts
 
             displayMessage(`Đang chuẩn bị hoạt ảnh cho: ${plan.title}`);
 
@@ -1310,7 +1412,10 @@
             mainTimeline = gsap.timeline({
                 onUpdate: () => {
                     timelineSlider.value = mainTimeline.progress() * 100;
-                    playPauseBtn.textContent = mainTimeline.paused() ? "▶️" : "⏸️";
+                    // Only update play/pause button if not in explanation mode
+                    if (!isExplanationMode) {
+                         playPauseBtn.textContent = mainTimeline.paused() ? "▶️" : "⏸️";
+                    }
                 },
                 onComplete: () => {
                     displayMessage("Hoạt ảnh hoàn tất!");
@@ -1318,6 +1423,7 @@
                     playPauseBtn.disabled = true;
                     timelineSlider.disabled = true;
                     speedButtons.forEach(btn => btn.disabled = true);
+                    explanationModeToggle.disabled = true; // Disable explanation mode toggle after animation finishes
                     if (particles) {
                         particles.visible = true;
                     }
@@ -1335,6 +1441,7 @@
             restartBtn.disabled = false;
             timelineSlider.disabled = false;
             speedButtons.forEach(btn => btn.disabled = false);
+            explanationModeToggle.disabled = false; // Enable explanation mode toggle when animation is ready
 
             playPauseBtn.textContent = "⏸️";
 
@@ -1355,24 +1462,27 @@
                 }
             });
 
-            plan.animationSteps.forEach(step => {
-                mainTimeline.add(() => { displayMessage(step.text || '...'); }, step.type);
+            // NEW: Iterate through animation steps and add logic for explanation mode
+            plan.animationSteps.forEach((step, index) => {
+                // Add the animation specific to the step first
+                // Use a separate mini-timeline for each step animation, then add explanation logic
+                const stepTimeline = gsap.timeline();
 
                 if (step.type === 'move_to_center') {
                     // Ensure no glow on atoms at the start of this phase
-                    mainTimeline.add(() => {
+                    stepTimeline.add(() => {
                         scene.children.flatMap(obj => {
-                            if (obj.isGroup && obj.userData.moleculeData) { // Check if it's a molecule group
+                            if (obj.isGroup && obj.userData.moleculeData) { // Filter for molecule groups
                                 return obj.children.filter(c => c.userData.isAtom);
                             }
                             return [];
                         }).forEach(atomMesh => {
                             atomMesh.material.emissive.set(0x000000); // Set to black
                         });
-                    }, step.type);
+                    });
 
                     // Zoom camera out slightly to show more of the action area with more molecules
-                    mainTimeline.to(camera.position, { z: 20, duration: 2.5, ease: "power2.inOut"}, step.type); // Zoom out a bit more
+                    stepTimeline.to(camera.position, { z: 20, duration: 2.5, ease: "power2.inOut"}); // Zoom out a bit more
                     const convergenceRadius = 3; // Radius around the center where molecules converge
                     reactantObjects.forEach((m) => {
                         // Move molecules towards random points within a smaller central sphere/cube
@@ -1380,29 +1490,29 @@
                         const targetY = (Math.random() - 0.5) * convergenceRadius * 2;
                         const targetZ = (Math.random() - 0.5) * convergenceRadius * 2; // Also introduce some Z variation
 
-                        mainTimeline.to(m.obj.position, {
+                        stepTimeline.to(m.obj.position, {
                             x: targetX,
                             y: targetY,
                             z: targetZ,
                             duration: 2.5,
                             ease: "power2.inOut"
-                        }, step.type);
+                        }, "<"); // Start all at the same time
                     });
                 } else if (step.type === 'break_bonds') {
-                    mainTimeline.to(camera.position, { z: 12, duration: 2, ease: "power2.inOut"}, step.type);
+                    stepTimeline.to(camera.position, { z: 12, duration: 2, ease: "power2.inOut"});
                     reactantObjects.forEach(m => {
                         // Animate atoms emissive color (reduced glow intensity)
                         m.obj.children.forEach((child) => {
                             if (child.userData.isAtom) { // Only animate atoms
-                                mainTimeline.to(child.material.emissive, { r: 0.3, g: 0.3, b: 0.1, duration: 1, ease: "power2.in" }, step.type);
+                                stepTimeline.to(child.material.emissive, { r: 0.3, g: 0.3, b: 0.1, duration: 1, ease: "power2.in" }, "<");
                             }
                         });
                         // Animate bond "snap" and fade out
                         if (m.obj.userData.moleculeData && m.obj.userData.moleculeData.bondMeshes) {
                             m.obj.userData.moleculeData.bondMeshes.forEach(bondMesh => {
                                 // Animate scale down, then fade opacity
-                                mainTimeline.to(bondMesh.scale, { x: 0.2, y: 0.2, z: 0.2, duration: 0.3, ease: "power1.in" }, step.type);
-                                mainTimeline.to(bondMesh.material, { opacity: 0, duration: 0.5, ease: "power1.out" }, "<+0.1"); // Start fade slightly after scale starts
+                                stepTimeline.to(bondMesh.scale, { x: 0.2, y: 0.2, z: 0.2, duration: 0.3, ease: "power1.in" }, "<");
+                                stepTimeline.to(bondMesh.material, { opacity: 0, duration: 0.5, ease: "power1.out" }, "<+0.1"); // Start fade slightly after scale starts
                             });
                         }
                         // Animate atoms breaking apart from each other
@@ -1410,24 +1520,19 @@
                             if (child.userData.isAtom) {
                                 // Simple outward movement from center of its group
                                 const direction = new THREE.Vector3().copy(child.position).normalize();
-                                mainTimeline.to(child.position, {
+                                stepTimeline.to(child.position, {
                                     x: child.position.x + direction.x * 0.8,
                                     y: child.position.y + direction.y * 0.8,
                                     z: child.position.z + direction.z * 0.8,
                                     duration: 2,
                                     ease: "back.out(4)"
-                                }, step.type);
+                                }, "<");
                             }
                         });
                     });
                 } else if (step.type === 'rearrange') {
-                    // Fade out old reactant atoms and bonds, then remove molecule groups
-                    reactantObjects.forEach(m => {
-                        mainTimeline.to(m.obj.children.map(c => c.material), { opacity: 0, duration: 1, onComplete: () => scene.remove(m.obj) }, step.type);
-                    });
-
                     // Quickly fade out any lingering emissive glow from all atoms in the scene
-                    mainTimeline.to(scene.children.flatMap(obj => {
+                    stepTimeline.to(scene.children.flatMap(obj => {
                         if (obj.isGroup && obj.userData.moleculeData) { // Filter for molecule groups
                             return obj.children.filter(c => c.userData.isAtom); // Get atoms within groups
                         }
@@ -1438,11 +1543,15 @@
                             'material.emissive.g': 0,
                             'material.emissive.b': 0,
                             duration: 0.1 // Rất nhanh để tắt phát sáng
-                        }, step.type); // Start at the beginning of the rearrange step
+                        }, "<"); // Start at the very beginning of this step
 
+                    // Fade out old reactant atoms and bonds, then remove molecule groups
+                    reactantObjects.forEach(m => {
+                        stepTimeline.to(m.obj.children.map(c => c.material), { opacity: 0, duration: 1, onComplete: () => scene.remove(m.obj) }, "<");
+                    });
 
                     if (plan.isExothermic) {
-                        mainTimeline.add(() => {
+                        stepTimeline.add(() => {
                             const shockwaveGeo = new THREE.TorusGeometry(1, 0.1, 16, 100);
                             const shockwaveMat = new THREE.MeshBasicMaterial({ color: 0xffffee, transparent: true, opacity: 1 });
                             const shockwave = new THREE.Mesh(shockwaveGeo, shockwaveMat);
@@ -1450,7 +1559,7 @@
                             scene.add(shockwave);
                             gsap.to(shockwave.scale, { x: 20, y: 20, z: 20, duration: 2, ease: "power1.out" });
                             gsap.to(shockwave.material, { opacity: 0, duration: 2, ease: "power1.out", onComplete: () => scene.remove(shockwave) });
-                        }, step.type + "+=0.5");
+                        }, "<+0.5");
 
                     }
 
@@ -1468,27 +1577,27 @@
                             });
 
                             // Animate atoms and bonds to full opacity and scale (for bonds)
-                            mainTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, step.type + "+=1");
-
+                            stepTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, "<+1"); // Changed to stepTimeline
+                            
                             // Animate bond scale in for products
                             productObj.children.forEach(c => {
                                 if (c.name.startsWith('bond-')) {
-                                    mainTimeline.to(c.scale, { x: 1, y: 1, z: 1, duration: 1.5, ease: "back.out(1.7)" }, step.type + "+=1");
+                                    stepTimeline.to(c.scale, { x: 1, y: 1, z: 1, duration: 1.5, ease: "back.out(1.7)" }, "<"); // Changed to stepTimeline
                                 }
                             });
                             productX += 5;
                         }
                     });
                 } else if (step.type === 'gas_evolution') { // Handle gas evolution step
-                    mainTimeline.add(() => {
+                    stepTimeline.add(() => {
                         createGasBubbles(step);
-                    }, step.type);
+                    }, "<");
                 } else if (step.type === 'precipitation') { // Handle precipitation step
-                    mainTimeline.add(() => {
+                    stepTimeline.add(() => {
                         createPrecipitationParticles(step);
-                    }, step.type);
+                    }, "<");
                 } else if (step.type === 'color_change') { // Handle color change step
-                    mainTimeline.add(() => {
+                    stepTimeline.add(() => {
                         if (solutionContainer) {
                             solutionContainer.visible = true;
                             // Set initial color and opacity from step data or defaults
@@ -1515,7 +1624,23 @@
                                 ease: "power1.inOut"
                             });
                         }
-                    }, step.type);
+                    }, "<");
+                }
+
+                // Add the stepTimeline to the mainTimeline
+                mainTimeline.add(stepTimeline);
+
+                // NEW: Explanation Mode Logic
+                if (isExplanationMode) {
+                    mainTimeline.add(() => {
+                        // Pause the main timeline
+                        mainTimeline.pause();
+                        // Display the explanation modal
+                        showExplanationModal(step.text, step.explanation, index + 1); // Use step.text for title, step.explanation for content
+                    }, ">"); // Add this immediately after the current step's animations complete
+                } else {
+                    // If not in explanation mode, simply display the info text without pausing
+                    mainTimeline.add(() => { displayMessage(step.text || '...'); });
                 }
             });
         }
@@ -1543,8 +1668,10 @@
             restartBtn.disabled = true;
             timelineSlider.disabled = true;
             speedButtons.forEach(btn => btn.disabled = true);
+            explanationModeToggle.disabled = true; // Disable explanation mode toggle during generation
             clearInputBtn.classList.add('hidden'); // Hide clear button during processing
             moleculeTooltip.classList.remove('show'); // Hide tooltip during generation
+            hideExplanationModal(); // Hide explanation modal if it was open
 
             if (particles) {
                 particles.visible = false;
@@ -1552,7 +1679,7 @@
             toggleDragHint(false);
             updateAtomLegend(null);
 
-            // PROMPT: Requesting 'bonds' array within molecule objects with atom indices and bond types
+            // UPDATED PROMPT: Requesting 'explanation' field for each animation step
             const prompt = `
             Từ các chất tham gia do người dùng cung cấp là: "${userInput}".
             Hãy thực hiện các bước sau một cách tuần tự:
@@ -1573,7 +1700,9 @@
                     - "atom2Index": (number) Chỉ số của nguyên tử thứ hai trong mảng 'atoms' của phân tử.
                     - "bondType": (string) Loại liên kết ('single', 'double', 'triple').
             - "products": (array) Một mảng các đối tượng sản phẩm, cấu trúc tương tự reactants, bao gồm các thông tin về liên kết.
-            - "animationSteps": (array) Một mảng các bước hoạt ảnh, mỗi bước có dạng {type: string, text: string, ...}.
+            - "animationSteps": (array) Một mảng các bước hoạt ảnh, mỗi bước có dạng {type: string, text: string, explanation: string, ...}.
+                "text": (string) Mô tả ngắn gọn cho thanh thông báo.
+                "explanation": (string) Mô tả chi tiết hơn cho hộp giải thích từng bước.
                 Các loại type có thể có:
                 - 'move_to_center': Các phân tử di chuyển vào trung tâm buồng phản ứng.
                 - 'break_bonds': Liên kết giữa các nguyên tử bị phá vỡ, các nguyên tử tách rời.
@@ -1737,12 +1866,17 @@
         playPauseBtn.addEventListener('click', () => {
             if (mainTimeline) {
                 mainTimeline.paused(!mainTimeline.paused());
+                // If we're in explanation mode and just unpaused, hide the modal
+                if (!mainTimeline.paused() && isExplanationMode) {
+                    hideExplanationModal();
+                }
             }
         });
 
         restartBtn.addEventListener('click', () => {
             if (mainTimeline) {
                 mainTimeline.restart();
+                hideExplanationModal(); // Hide modal on restart
             }
         });
 
@@ -1760,6 +1894,10 @@
         timelineSlider.addEventListener('input', () => {
             if (mainTimeline) {
                 mainTimeline.progress(timelineSlider.value / 100);
+                if (isExplanationMode) { // If in explanation mode, pause when user drags slider
+                    mainTimeline.pause();
+                    hideExplanationModal(); // Hide explanation if user manually scrubs
+                }
             }
         });
 
@@ -1788,6 +1926,28 @@
             toggleDragHint(true);
             updateAtomLegend(null); // Initially clear or set up empty legend
             updateInputState(); // Initial check for input field
+
+            // NEW: Event listeners for explanation mode
+            explanationModeToggle.addEventListener('click', () => {
+                isExplanationMode = !isExplanationMode;
+                explanationModeToggle.classList.toggle('active', isExplanationMode);
+                displayMessage(`Chế độ Giải thích: ${isExplanationMode ? 'BẬT' : 'TẮT'}`);
+                if (isExplanationMode && mainTimeline && !mainTimeline.isActive()) {
+                    // If toggled ON and animation is already finished, start from beginning in explanation mode
+                    mainTimeline.restart();
+                } else if (!isExplanationMode && mainTimeline && mainTimeline.paused()) {
+                    // If toggled OFF and currently paused by explanation, resume
+                    mainTimeline.resume();
+                    hideExplanationModal();
+                }
+            });
+
+            explanationContinueBtn.addEventListener('click', () => {
+                if (mainTimeline) {
+                    mainTimeline.resume();
+                    hideExplanationModal();
+                }
+            });
         }
 
         modalCloseBtn.addEventListener('click', hideWelcomeModal);
@@ -1854,6 +2014,29 @@
         // Initial state: collapse the legend by default
         atomLegendContent.classList.remove('expanded');
         atomLegendToggle.style.transform = 'rotate(0deg)';
+
+        // NEW: Explanation Modal Functions
+        function showExplanationModal(title, content, stepNumber) {
+            explanationTitle.textContent = `Bước ${stepNumber}: ${title}`;
+            explanationText.textContent = content;
+            explanationModalOverlay.classList.add('show');
+            // Disable controls while modal is open, except continue button
+            playPauseBtn.disabled = true;
+            restartBtn.disabled = true;
+            timelineSlider.disabled = true;
+            speedButtons.forEach(btn => btn.disabled = true);
+            explanationModeToggle.disabled = true; // Disable explanation mode toggle while modal is open
+        }
+
+        function hideExplanationModal() {
+            explanationModalOverlay.classList.remove('show');
+            // Re-enable controls
+            playPauseBtn.disabled = false;
+            restartBtn.disabled = false;
+            timelineSlider.disabled = false;
+            speedButtons.forEach(btn => btn.disabled = false);
+            explanationModeToggle.disabled = false; // Enable explanation mode toggle
+        }
     </script>
 </body>
 </html>
