@@ -248,6 +248,8 @@
             color: #e5e7eb;
             opacity: 0; /* Mặc định ẩn */
             transition: opacity 0.3s ease-in-out, color 0.3s ease-in-out; /* Hiệu ứng chuyển đổi */
+            font-size: 1rem; /* THAY ĐỔI: Tăng kích thước chữ */
+            font-weight: 600; /* THAY ĐỔI: Tăng độ đậm chữ */
         }
         #info-text.error-message {
             color: var(--danger-color); /* Màu đỏ cho lỗi */
@@ -364,7 +366,7 @@
         const chamber = document.getElementById('reaction-chamber');
         let renderer, scene, camera, controls, composer, mainTimeline;
         let molecules = [];
-        let particles; // THAY ĐỔI: Khai báo biến cho hệ thống hạt
+        let particles; // Khai báo biến cho hệ thống hạt
 
         function init3D() {
             // Xóa nội dung lỗi WebGL cũ nếu có
@@ -403,7 +405,7 @@
                 controls = new OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
 
-                // THAY ĐỔI: Thêm hệ thống hạt (particles)
+                // Thêm hệ thống hạt (particles)
                 const particleCount = 1000;
                 const positions = new Float32Array(particleCount * 3);
                 const colors = new Float32Array(particleCount * 3);
@@ -446,7 +448,7 @@
                 function animate() {
                     requestAnimationFrame(animate);
                     controls.update();
-                    // THAY ĐỔI: Quay các hạt nhẹ nhàng
+                    // Quay các hạt nhẹ nhàng
                     if (particles && particles.visible) {
                         particles.rotation.y += 0.0005;
                         particles.rotation.x += 0.0002;
@@ -555,7 +557,7 @@
             if (mainTimeline) mainTimeline.kill();
             clearScene();
             
-            // THAY ĐỔI: Ẩn các hạt khi hoạt ảnh bắt đầu
+            // Ẩn các hạt khi hoạt ảnh bắt đầu
             if (particles) {
                 particles.visible = false;
             }
@@ -573,7 +575,7 @@
                     playPauseBtn.disabled = true;
                     timelineSlider.disabled = true;
                     speedButtons.forEach(btn => btn.disabled = true);
-                    // THAY ĐỔI: Hiện các hạt khi hoạt ảnh kết thúc
+                    // Hiện các hạt khi hoạt ảnh kết thúc
                     if (particles) {
                         particles.visible = true;
                     }
@@ -669,7 +671,7 @@
             timelineSlider.disabled = true;
             speedButtons.forEach(btn => btn.disabled = true);
 
-            // THAY ĐỔI: Ẩn các hạt khi AI đang tạo phản ứng
+            // Ẩn các hạt khi AI đang tạo phản ứng
             if (particles) {
                 particles.visible = false;
             }
@@ -721,7 +723,7 @@
             } catch (error) {
                 console.error("Lỗi phân tích hoặc tạo hoạt ảnh:", error);
                 displayMessage("Đã có lỗi xảy ra. AI có thể đã trả về định dạng không đúng hoặc gặp lỗi. Vui lòng thử lại.", true);
-                // THAY ĐỔI: Hiện các hạt trở lại nếu có lỗi
+                // Hiện các hạt trở lại nếu có lỗi
                 if (particles) {
                     particles.visible = true;
                 }
