@@ -1356,6 +1356,14 @@
                 mainTimeline.add(() => { displayMessage(step.text || '...'); }, step.type);
 
                 if (step.type === 'move_to_center') {
+                    // NEW: Ensure no glow on atoms at the start of this phase
+                    mainTimeline.add(() => {
+                        scene.children.flatMap(obj => obj.children).filter(c => c.userData.isAtom)
+                            .forEach(atomMesh => {
+                                atomMesh.material.emissive.set(0x000000); // Set to black
+                            });
+                    }, step.type);
+
                     // Zoom camera out slightly to show more of the action area with more molecules
                     mainTimeline.to(camera.position, { z: 20, duration: 2.5, ease: "power2.inOut"}, step.type); // Zoom out a bit more
                     const convergenceRadius = 3; // Radius around the center where molecules converge
@@ -1379,7 +1387,7 @@
                         // NEW: Animate atoms emissive color (slightly reduced glow)
                         m.obj.children.forEach((child) => {
                             if (child.userData.isAtom) { // Only animate atoms
-                                mainTimeline.to(child.material.emissive, { r: 0.8, g: 0.8, b: 0.6, duration: 1, ease: "power2.in" }, step.type);
+                                mainTimeline.to(child.material.emissive, { r: 0.6, g: 0.6, b: 0.4, duration: 1, ease: "power2.in" }, step.type);
                             }
                         });
                         // Animate bond "snap" and fade out
@@ -1411,8 +1419,7 @@
                         mainTimeline.to(m.obj.children.map(c => c.material), { opacity: 0, duration: 1, onComplete: () => scene.remove(m.obj) }, step.type);
                     });
 
-                    // NEW: Quickly fade out any lingering emissive glow from all atoms in the scene
-                    // This is crucial to prevent the 'too bright' issue during new product formation
+                    // Quickly fade out any lingering emissive glow from all atoms in the scene
                     mainTimeline.to(scene.children.flatMap(obj => obj.children).filter(c => c.userData.isAtom),
                         {
                             'material.emissive.r': 0,
@@ -1450,8 +1457,6 @@
 
                             // Animate atoms and bonds to full opacity and scale (for bonds)
                             mainTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, step.type + "+=1");
-                            // No need to animate emissive of new products from 0 to 0, it's already 0.
-                            // mainTimeline.to(productObj.children.filter(c => c.userData.isAtom).map(c => c.material.emissive), { r: 0, g: 0, b: 0, duration: 2 }, step.type + "+=1"); // Removed: Redundant
 
                             // Animate bond scale in for products
                             productObj.children.forEach(c => {
