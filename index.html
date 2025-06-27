@@ -1043,6 +1043,7 @@
                 name: moleculeDef.name,
                 molecularWeight: moleculeDef.molecularWeight,
                 physicalState: moleculeDef.physicalState,
+                bonds: moleculeDef.bonds, // Store bonds data as well for potential future use
                 bondMeshes: bondMeshes // Store references to bond meshes
             };
             scene.add(group);
@@ -1375,13 +1376,13 @@
                 } else if (step.type === 'break_bonds') {
                     mainTimeline.to(camera.position, { z: 12, duration: 2, ease: "power2.inOut"}, step.type);
                     reactantObjects.forEach(m => {
-                        // Animate atoms emissive color (glow)
+                        // NEW: Animate atoms emissive color (slightly reduced glow)
                         m.obj.children.forEach((child) => {
                             if (child.userData.isAtom) { // Only animate atoms
-                                mainTimeline.to(child.material.emissive, { r: 1, g: 1, b: 0.8, duration: 1, ease: "power2.in" }, step.type);
+                                mainTimeline.to(child.material.emissive, { r: 0.8, g: 0.8, b: 0.6, duration: 1, ease: "power2.in" }, step.type);
                             }
                         });
-                        // NEW: Animate bond "snap" and fade out
+                        // Animate bond "snap" and fade out
                         if (m.obj.userData.moleculeData && m.obj.userData.moleculeData.bondMeshes) {
                             m.obj.userData.moleculeData.bondMeshes.forEach(bondMesh => {
                                 // Animate scale down, then fade opacity
@@ -1409,6 +1410,17 @@
                     reactantObjects.forEach(m => {
                         mainTimeline.to(m.obj.children.map(c => c.material), { opacity: 0, duration: 1, onComplete: () => scene.remove(m.obj) }, step.type);
                     });
+
+                    // NEW: Quickly fade out any lingering emissive glow from all atoms in the scene
+                    // This is crucial to prevent the 'too bright' issue during new product formation
+                    mainTimeline.to(scene.children.flatMap(obj => obj.children).filter(c => c.userData.isAtom),
+                        {
+                            'material.emissive.r': 0,
+                            'material.emissive.g': 0,
+                            'material.emissive.b': 0,
+                            duration: 0.3 // Very quick fade out
+                        }, step.type); // Start at the beginning of the rearrange step
+
 
                     if (plan.isExothermic) {
                         mainTimeline.add(() => {
@@ -1438,9 +1450,10 @@
 
                             // Animate atoms and bonds to full opacity and scale (for bonds)
                             mainTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, step.type + "+=1");
-                            mainTimeline.to(productObj.children.filter(c => c.userData.isAtom).map(c => c.material.emissive), { r: 0, g: 0, b: 0, duration: 2 }, step.type + "+=1"); // Remove glow from atoms
+                            // No need to animate emissive of new products from 0 to 0, it's already 0.
+                            // mainTimeline.to(productObj.children.filter(c => c.userData.isAtom).map(c => c.material.emissive), { r: 0, g: 0, b: 0, duration: 2 }, step.type + "+=1"); // Removed: Redundant
 
-                            // NEW: Animate bond scale in
+                            // Animate bond scale in for products
                             productObj.children.forEach(c => {
                                 if (c.name.startsWith('bond-')) {
                                     mainTimeline.to(c.scale, { x: 1, y: 1, z: 1, duration: 1.5, ease: "back.out(1.7)" }, step.type + "+=1");
