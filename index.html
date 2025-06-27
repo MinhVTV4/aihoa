@@ -296,16 +296,16 @@
             background-color: var(--danger-color); /* Red background for errors */
             color: white;
             border-radius: 0.75rem;
-            font-size: 1rem;
+            font-size: 1.1rem; /* Larger font for readability */
             max-width: 80%;
         }
         .webgl-error-message h2 {
-            font-size: 1.5rem;
+            font-size: 1.8rem; /* Larger heading */
             font-weight: 700;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
         }
         .webgl-error-message p {
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
         }
         .webgl-error-message a {
             color: #fee2e2;
@@ -715,11 +715,11 @@
                 });
                 scene.remove(m);
             });
-            // NEW: Also remove any existing gas bubbles
-            scene.children.filter(obj => obj.userData.isGasBubble).forEach(bubble => {
-                bubble.geometry.dispose();
-                bubble.material.dispose();
-                scene.remove(bubble);
+            // Also remove any existing gas bubbles and precipitation particles
+            scene.children.filter(obj => obj.userData.isGasBubble || obj.userData.isPrecipitationParticle).forEach(particle => {
+                if (particle.geometry) particle.geometry.dispose();
+                if (particle.material) particle.material.dispose();
+                scene.remove(particle);
             });
             molecules = [];
         }
@@ -818,6 +818,72 @@
             }
         }
 
+        /**
+         * Creates and animates precipitation particles.
+         * @param {object} options - Options for precipitation: color, density, formation_area.
+         */
+        function createPrecipitationParticles(options) {
+            const defaultColor = '#C0C0C0'; // Default gray/white for precipitate
+            let particleCount = 200;
+            let particleSize = 0.08;
+            let startY = 5; // Particles start from mid-top
+            let endY = -5;  // Particles settle towards bottom
+            let spread = 5; // Horizontal spread
+
+            const precipitationColor = options.color || defaultColor;
+            const formationArea = options.formation_area || 'bottom'; // 'center' or 'bottom'
+            const density = options.density || 'medium'; // 'light', 'medium', 'heavy'
+
+            switch (density) {
+                case 'light':
+                    particleCount = 100;
+                    particleSize = 0.05;
+                    break;
+                case 'medium':
+                    particleCount = 200;
+                    particleSize = 0.08;
+                    break;
+                case 'heavy':
+                    particleCount = 400;
+                    particleSize = 0.12;
+                    break;
+            }
+
+            const precipitationGeometry = new THREE.SphereGeometry(particleSize, 8, 8);
+            const precipitationMaterial = new THREE.MeshBasicMaterial({
+                color: precipitationColor,
+                transparent: true,
+                opacity: 0
+            });
+
+            const particlesArray = [];
+            for (let i = 0; i < particleCount; i++) {
+                const particle = new THREE.Mesh(precipitationGeometry, precipitationMaterial.clone());
+                particle.position.set(
+                    (Math.random() - 0.5) * spread,
+                    startY + (Math.random() * 2 - 1) * 2, // Slightly randomized start Y
+                    (Math.random() - 0.5) * spread
+                );
+                particle.userData.isPrecipitationParticle = true; // Mark for easy removal
+                scene.add(particle);
+                particlesArray.push(particle);
+
+                const finalY = (formationArea === 'bottom') ? endY + (Math.random() * 2 - 1) * 0.5 : (Math.random() * 2 - 1) * 1; // Settle at bottom or center
+                const duration = 2 + Math.random() * 2; // Random duration for settling
+
+                // Animate opacity and position
+                gsap.timeline({ delay: Math.random() * 0.5 }) // Stagger appearance
+                    .to(particle.material, { opacity: 0.8, duration: 1 })
+                    .to(particle.position, {
+                        y: finalY,
+                        x: particle.position.x + (Math.random() - 0.5) * 1, // Slight drift
+                        z: particle.position.z + (Math.random() - 0.5) * 1, // Slight drift
+                        duration: duration,
+                        ease: "power1.inOut"
+                    }, "<"); // Start position animation at same time as opacity fade-in
+            }
+        }
+
 
         /**
          * Validates the structure of the reaction plan object.
@@ -846,7 +912,7 @@
                  throw new Error("Phản hồi AI không chứa chất phản ứng hoặc sản phẩm. Vui lòng thử lại hoặc thay đổi yêu cầu.");
             }
 
-            // NEW: Validate specific animation step types if they exist
+            // Validate specific animation step types if they exist
             for (const step of plan.animationSteps) {
                 if (step.type === 'gas_evolution') {
                     if (typeof step.gas_color !== 'string' || !step.gas_color.startsWith('#')) {
@@ -863,6 +929,16 @@
                         console.warn("Gas evolution step has invalid 'origin_point'. Using default.");
                         step.origin_point = undefined; // Force default if invalid
                     }
+                } else if (step.type === 'precipitation') { // NEW: Validate precipitation step
+                    if (typeof step.color !== 'string' || !step.color.startsWith('#')) {
+                        console.warn("Precipitation step missing or invalid 'color'. Using default.");
+                    }
+                    if (step.density && !['light', 'medium', 'heavy'].includes(step.density)) {
+                        console.warn("Precipitation step has invalid 'density'. Using default.");
+                    }
+                    if (step.formation_area && !['center', 'bottom'].includes(step.formation_area)) {
+                        console.warn("Precipitation step has invalid 'formation_area'. Using default.");
+                    }
                 }
                 // Add validation for other new types here when implemented
             }
@@ -874,7 +950,7 @@
         // --- Animation Engine ---
         function runAnimation(plan) {
             if (mainTimeline) mainTimeline.kill();
-            clearScene(); // Clears molecules AND gas bubbles
+            clearScene(); // Clears molecules, gas bubbles, and precipitation particles
             
             if (particles) {
                 particles.visible = false;
@@ -968,9 +1044,13 @@
                             productX += 5;
                         }
                     });
-                } else if (step.type === 'gas_evolution') { // NEW: Handle gas evolution step
+                } else if (step.type === 'gas_evolution') { // Handle gas evolution step
                     mainTimeline.add(() => {
                         createGasBubbles(step);
+                    }, step.type);
+                } else if (step.type === 'precipitation') { // NEW: Handle precipitation step
+                    mainTimeline.add(() => {
+                        createPrecipitationParticles(step);
                     }, step.type);
                 }
             });
@@ -1027,6 +1107,10 @@
                     - 'bubble_count': (number) Số lượng bong bóng khí.
                     - 'bubble_size': (number) Kích thước tương đối của mỗi bong bóng (0.05-0.5).
                     - 'origin_point': (object, tùy chọn) Điểm bắt đầu của bong bóng {x: number, y: number, z: number}. Mặc định sẽ là dưới đáy.
+                - 'precipitation': Mô phỏng sự hình thành kết tủa. Cần các thuộc tính bổ sung:
+                    - 'color': (string) Mã màu HEX của hạt kết tủa (vd: '#F0F0F0' cho trắng).
+                    - 'density': (string, tùy chọn) Mức độ dày đặc của kết tủa ('light', 'medium', 'heavy'). Mặc định là 'medium'.
+                    - 'formation_area': (string, tùy chọn) Khu vực kết tủa hình thành ('center', 'bottom'). Mặc định là 'bottom'.
 
             Sử dụng các màu sau cho nguyên tử (hãy tự suy ra các màu khác nếu cần):
             - H: #FFFFFF (Trắng)
