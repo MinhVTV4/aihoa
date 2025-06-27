@@ -295,6 +295,68 @@
         .webgl-error-message a:hover {
             color: #fff;
         }
+
+        /* THAY ĐỔI MỚI: CSS cho Welcome Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .welcome-modal {
+            background-color: var(--panel-bg);
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s ease-in-out;
+        }
+        .modal-overlay.show .welcome-modal {
+            transform: scale(1);
+        }
+        .welcome-modal h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+        }
+        .welcome-modal p {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #d1d5db;
+            margin-bottom: 1.5rem;
+        }
+        .modal-close-btn {
+            background-image: linear-gradient(to right, #6366f1, var(--accent-color));
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 0.75rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+        .modal-close-btn:hover {
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.6);
+            transform: translateY(-3px);
+        }
     </style>
 </head>
 <body>
@@ -315,22 +377,30 @@
                 <button id="play-pause-btn" class="icon-btn" disabled>▶️</button>
                 <button id="restart-btn" class="icon-btn" disabled>🔄</button>
                 
-                <!-- THAY ĐỔI: Thêm nhóm điều khiển tốc độ -->
                 <div class="speed-control-group">
                     <button class="speed-btn" data-speed="0.5" disabled>0.5x</button>
                     <button class="speed-btn active" data-speed="1" disabled>1x</button>
                     <button class="speed-btn" data-speed="2" disabled>2x</button>
                 </div>
 
-                <!-- Thanh progress bar cũ (giờ ẩn đi) -->
                 <div id="progress-container">
                     <div id="progress-bar"></div>
                 </div>
             </div>
-            <!-- THAY ĐỔI: Thêm thanh trượt thời gian -->
             <input type="range" id="timeline-slider" min="0" max="100" value="0" disabled>
 
             <p id="info-text">Hãy xem AI dự đoán và diễn họa phản ứng hóa học!</p>
+        </div>
+    </div>
+
+    <!-- THAY ĐỔI MỚI: Welcome Modal -->
+    <div id="welcome-modal-overlay" class="modal-overlay">
+        <div class="welcome-modal">
+            <h2>Chào mừng đến với Nhà Hóa học AI v3.0!</h2>
+            <p>Khám phá thế giới hóa học sống động với sức mạnh của AI.</p>
+            <p>Nhập các chất tham gia hoặc một phương trình hóa học vào ô bên dưới, sau đó nhấn "Tạo Phản ứng" để xem AI diễn họa quá trình!</p>
+            <p>Bạn cũng có thể kéo để xoay buồng phản ứng 3D và sử dụng các điều khiển bên dưới để tùy chỉnh hoạt ảnh.</p>
+            <button id="modal-close-btn" class="modal-close-btn">Bắt đầu ngay!</button>
         </div>
     </div>
 
@@ -366,10 +436,9 @@
         const chamber = document.getElementById('reaction-chamber');
         let renderer, scene, camera, controls, composer, mainTimeline;
         let molecules = [];
-        let particles; // Khai báo biến cho hệ thống hạt
+        let particles;
 
         function init3D() {
-            // Xóa nội dung lỗi WebGL cũ nếu có
             chamber.innerHTML = '';
             try {
                 scene = new THREE.Scene();
@@ -379,7 +448,6 @@
                 renderer.setPixelRatio(window.devicePixelRatio);
                 chamber.appendChild(renderer.domElement);
 
-                // Cài đặt Post-processing (Bloom effect)
                 const renderPass = new RenderPass(scene, camera);
                 const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
                 bloomPass.threshold = 0;
@@ -392,7 +460,6 @@
                 composer.addPass(bloomPass);
                 composer.addPass(outputPass);
 
-                // Thêm đèn
                 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
                 scene.add(ambientLight);
                 const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -401,19 +468,16 @@
 
                 camera.position.z = 15;
 
-                // Điều khiển OrbitControls cho phép xoay, phóng to/thu nhỏ khung cảnh
                 controls = new OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
 
-                // Thêm hệ thống hạt (particles)
                 const particleCount = 1000;
                 const positions = new Float32Array(particleCount * 3);
                 const colors = new Float32Array(particleCount * 3);
-                const particleColor = new THREE.Color(0xffffff); // Màu trắng
-                const sphereRadius = 20; // Bán kính khu vực hạt xuất hiện
+                const particleColor = new THREE.Color(0xffffff);
+                const sphereRadius = 20;
 
                 for (let i = 0; i < particleCount; i++) {
-                    // Tạo vị trí ngẫu nhiên trong một hình cầu
                     const x = (Math.random() - 0.5) * 2 * sphereRadius;
                     const y = (Math.random() - 0.5) * 2 * sphereRadius;
                     const z = (Math.random() - 0.5) * 2 * sphereRadius;
@@ -422,7 +486,6 @@
                     positions[i * 3 + 1] = y;
                     positions[i * 3 + 2] = z;
 
-                    // Gán màu trắng với độ mờ nhẹ
                     colors[i * 3] = particleColor.r;
                     colors[i * 3 + 1] = particleColor.g;
                     colors[i * 3 + 2] = particleColor.b;
@@ -433,22 +496,20 @@
                 particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
                 const particleMaterial = new THREE.PointsMaterial({
-                    size: 0.1, // Kích thước hạt
-                    vertexColors: true, // Sử dụng màu từ attribute
+                    size: 0.1,
+                    vertexColors: true,
                     transparent: true,
                     opacity: 0.5,
-                    blending: THREE.AdditiveBlending // Hiệu ứng cộng màu, làm hạt sáng hơn
+                    blending: THREE.AdditiveBlending
                 });
 
                 particles = new THREE.Points(particleGeometry, particleMaterial);
                 scene.add(particles);
-                particles.visible = true; // Mặc định hiển thị hạt
+                particles.visible = true;
 
-                // Vòng lặp hoạt ảnh chính
                 function animate() {
                     requestAnimationFrame(animate);
                     controls.update();
-                    // Quay các hạt nhẹ nhàng
                     if (particles && particles.visible) {
                         particles.rotation.y += 0.0005;
                         particles.rotation.x += 0.0002;
@@ -457,7 +518,6 @@
                 }
                 animate();
 
-                // Lắng nghe sự kiện thay đổi kích thước cửa sổ
                 window.addEventListener('resize', () => {
                     camera.aspect = chamber.clientWidth / chamber.clientHeight;
                     camera.updateProjectionMatrix();
@@ -467,7 +527,6 @@
 
             } catch (error) {
                 console.error("Lỗi khởi tạo WebGL:", error);
-                // Hiển thị thông báo lỗi thân thiện hơn
                 chamber.innerHTML = `
                     <div class="webgl-error-message">
                         <h2>Lỗi WebGL</h2>
@@ -490,6 +549,10 @@
         const loadingSpinner = document.getElementById('loading-spinner');
         const speedButtons = document.querySelectorAll('.speed-btn');
         const timelineSlider = document.getElementById('timeline-slider');
+
+        // THAY ĐỔI MỚI: Biến và tham chiếu cho modal
+        const welcomeModalOverlay = document.getElementById('welcome-modal-overlay');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
 
         let currentMessageTimeout;
         function displayMessage(message, isError = false) {
@@ -557,7 +620,6 @@
             if (mainTimeline) mainTimeline.kill();
             clearScene();
             
-            // Ẩn các hạt khi hoạt ảnh bắt đầu
             if (particles) {
                 particles.visible = false;
             }
@@ -575,7 +637,6 @@
                     playPauseBtn.disabled = true;
                     timelineSlider.disabled = true;
                     speedButtons.forEach(btn => btn.disabled = true);
-                    // Hiện các hạt khi hoạt ảnh kết thúc
                     if (particles) {
                         particles.visible = true;
                     }
@@ -671,7 +732,6 @@
             timelineSlider.disabled = true;
             speedButtons.forEach(btn => btn.disabled = true);
 
-            // Ẩn các hạt khi AI đang tạo phản ứng
             if (particles) {
                 particles.visible = false;
             }
@@ -723,7 +783,6 @@
             } catch (error) {
                 console.error("Lỗi phân tích hoặc tạo hoạt ảnh:", error);
                 displayMessage("Đã có lỗi xảy ra. AI có thể đã trả về định dạng không đúng hoặc gặp lỗi. Vui lòng thử lại.", true);
-                // Hiện các hạt trở lại nếu có lỗi
                 if (particles) {
                     particles.visible = true;
                 }
@@ -762,9 +821,38 @@
             }
         });
 
-        init3D();
-        generateBtn.addEventListener('click', generateReactionPlan);
-        displayMessage("Hãy xem AI dự đoán và diễn họa phản ứng hóa học!");
+        // THAY ĐỔI MỚI: Logic hiển thị modal chào mừng
+        function showWelcomeModal() {
+            // Kiểm tra localStorage để xem người dùng đã truy cập trước đó chưa
+            const hasVisited = localStorage.getItem('hasVisitedChemicalAIApp');
+            if (!hasVisited) {
+                welcomeModalOverlay.classList.add('show');
+                // Vô hiệu hóa tương tác với ứng dụng chính khi modal hiển thị
+                document.body.style.overflow = 'hidden'; // Ngăn cuộn trang
+            } else {
+                // Nếu đã truy cập, khởi tạo ứng dụng bình thường
+                initApp();
+            }
+        }
+
+        function hideWelcomeModal() {
+            welcomeModalOverlay.classList.remove('show');
+            localStorage.setItem('hasVisitedChemicalAIApp', 'true'); // Đánh dấu đã truy cập
+            document.body.style.overflow = ''; // Cho phép cuộn trang trở lại
+            initApp(); // Khởi tạo ứng dụng sau khi modal đóng
+        }
+
+        function initApp() {
+            init3D();
+            generateBtn.addEventListener('click', generateReactionPlan);
+            displayMessage("Hãy xem AI dự đoán và diễn họa phản ứng hóa học!");
+        }
+
+        // THAY ĐỔI MỚI: Lắng nghe sự kiện đóng modal
+        modalCloseBtn.addEventListener('click', hideWelcomeModal);
+
+        // Bắt đầu bằng cách kiểm tra và hiển thị modal
+        showWelcomeModal();
     </script>
 </body>
 </html>
