@@ -902,7 +902,10 @@
             molecules.forEach(m => {
                 m.children.forEach(c => {
                     if (c.geometry) c.geometry.dispose();
-                    if (c.material) c.material.dispose();
+                    if (c.material) {
+                        if (c.material.emissive) c.material.emissive.set(0x000000); // Ensure emissive is off
+                        c.material.dispose();
+                    }
                 });
                 scene.remove(m);
             });
@@ -944,7 +947,7 @@
                     color: atomDef.color,
                     metalness: 0.4,
                     roughness: 0.4,
-                    emissive: '#000000'
+                    emissive: '#000000' // Ensure emissive starts black for new atoms
                 });
                 const atomMesh = new THREE.Mesh(geometry, material);
 
@@ -1356,12 +1359,16 @@
                 mainTimeline.add(() => { displayMessage(step.text || '...'); }, step.type);
 
                 if (step.type === 'move_to_center') {
-                    // NEW: Ensure no glow on atoms at the start of this phase
+                    // Ensure no glow on atoms at the start of this phase
                     mainTimeline.add(() => {
-                        scene.children.flatMap(obj => obj.children).filter(c => c.userData.isAtom)
-                            .forEach(atomMesh => {
-                                atomMesh.material.emissive.set(0x000000); // Set to black
-                            });
+                        scene.children.flatMap(obj => {
+                            if (obj.isGroup && obj.userData.moleculeData) { // Check if it's a molecule group
+                                return obj.children.filter(c => c.userData.isAtom);
+                            }
+                            return [];
+                        }).forEach(atomMesh => {
+                            atomMesh.material.emissive.set(0x000000); // Set to black
+                        });
                     }, step.type);
 
                     // Zoom camera out slightly to show more of the action area with more molecules
@@ -1384,10 +1391,10 @@
                 } else if (step.type === 'break_bonds') {
                     mainTimeline.to(camera.position, { z: 12, duration: 2, ease: "power2.inOut"}, step.type);
                     reactantObjects.forEach(m => {
-                        // NEW: Animate atoms emissive color (slightly reduced glow)
+                        // Animate atoms emissive color (reduced glow intensity)
                         m.obj.children.forEach((child) => {
                             if (child.userData.isAtom) { // Only animate atoms
-                                mainTimeline.to(child.material.emissive, { r: 0.6, g: 0.6, b: 0.4, duration: 1, ease: "power2.in" }, step.type);
+                                mainTimeline.to(child.material.emissive, { r: 0.3, g: 0.3, b: 0.1, duration: 1, ease: "power2.in" }, step.type);
                             }
                         });
                         // Animate bond "snap" and fade out
@@ -1420,12 +1427,17 @@
                     });
 
                     // Quickly fade out any lingering emissive glow from all atoms in the scene
-                    mainTimeline.to(scene.children.flatMap(obj => obj.children).filter(c => c.userData.isAtom),
+                    mainTimeline.to(scene.children.flatMap(obj => {
+                        if (obj.isGroup && obj.userData.moleculeData) { // Filter for molecule groups
+                            return obj.children.filter(c => c.userData.isAtom); // Get atoms within groups
+                        }
+                        return [];
+                    }),
                         {
                             'material.emissive.r': 0,
                             'material.emissive.g': 0,
                             'material.emissive.b': 0,
-                            duration: 0.3 // Very quick fade out
+                            duration: 0.1 // Rất nhanh để tắt phát sáng
                         }, step.type); // Start at the beginning of the rearrange step
 
 
