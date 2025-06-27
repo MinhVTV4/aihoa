@@ -715,6 +715,12 @@
                 });
                 scene.remove(m);
             });
+            // NEW: Also remove any existing gas bubbles
+            scene.children.filter(obj => obj.userData.isGasBubble).forEach(bubble => {
+                bubble.geometry.dispose();
+                bubble.material.dispose();
+                scene.remove(bubble);
+            });
             molecules = [];
         }
 
@@ -747,6 +753,73 @@
         }
 
         /**
+         * Creates and animates gas bubbles.
+         * @param {object} options - Options for gas bubbles: color, count, size, origin_point {x, y, z}.
+         */
+        function createGasBubbles(options) {
+            const defaultColor = '#ADD8E6'; // Light blue for gas
+            const defaultCount = 30;
+            const defaultSize = 0.1;
+            const defaultOrigin = { x: 0, y: -5, z: 0 }; // Default from bottom center
+
+            const bubbleColor = options.gas_color || defaultColor;
+            const bubbleCount = options.bubble_count || defaultCount;
+            const bubbleSize = options.bubble_size || defaultSize;
+            const originPoint = options.origin_point || defaultOrigin;
+
+            const bubbles = [];
+            const bubbleGeometry = new THREE.SphereGeometry(bubbleSize, 16, 16);
+            const bubbleMaterial = new THREE.MeshBasicMaterial({
+                color: bubbleColor,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+
+            for (let i = 0; i < bubbleCount; i++) {
+                const bubble = new THREE.Mesh(bubbleGeometry, bubbleMaterial.clone()); // Clone material for individual opacity
+                bubble.position.set(
+                    originPoint.x + (Math.random() - 0.5) * 2, // Slight random spread
+                    originPoint.y + (Math.random() * 2), // Start slightly above origin
+                    originPoint.z + (Math.random() - 0.5) * 2
+                );
+                bubble.userData.isGasBubble = true; // Mark as gas bubble for easy removal
+                scene.add(bubble);
+                bubbles.push(bubble);
+
+                // Animate individual bubbles
+                gsap.to(bubble.position, {
+                    y: originPoint.y + 15 + Math.random() * 5, // Rise far up
+                    x: bubble.position.x + (Math.random() - 0.5) * 3, // Drift horizontally
+                    duration: 3 + Math.random() * 2, // Random duration
+                    ease: "none",
+                    onComplete: () => {
+                        // Fade out and remove when reaching top
+                        gsap.to(bubble.material, {
+                            opacity: 0,
+                            duration: 0.5,
+                            onComplete: () => {
+                                bubble.geometry.dispose();
+                                bubble.material.dispose();
+                                scene.remove(bubble);
+                            }
+                        });
+                    }
+                });
+
+                // Animate bubble size
+                gsap.to(bubble.scale, {
+                    x: 1.5, y: 1.5, z: 1.5,
+                    duration: 0.5,
+                    yoyo: true, repeat: -1, // Pulsate
+                    ease: "sine.inOut",
+                    delay: Math.random() * 2 // Stagger
+                });
+            }
+        }
+
+
+        /**
          * Validates the structure of the reaction plan object.
          * @param {object} plan - The reaction plan object returned by the AI.
          * @returns {boolean} True if the plan is valid, false otherwise.
@@ -772,6 +845,28 @@
             if (plan.reactants.length === 0 && plan.products.length === 0) {
                  throw new Error("Phản hồi AI không chứa chất phản ứng hoặc sản phẩm. Vui lòng thử lại hoặc thay đổi yêu cầu.");
             }
+
+            // NEW: Validate specific animation step types if they exist
+            for (const step of plan.animationSteps) {
+                if (step.type === 'gas_evolution') {
+                    if (typeof step.gas_color !== 'string' || !step.gas_color.startsWith('#')) {
+                        console.warn("Gas evolution step missing or invalid 'gas_color'. Using default.");
+                    }
+                    if (typeof step.bubble_count !== 'number' || step.bubble_count <= 0) {
+                        console.warn("Gas evolution step missing or invalid 'bubble_count'. Using default.");
+                    }
+                    if (typeof step.bubble_size !== 'number' || step.bubble_size <= 0) {
+                        console.warn("Gas evolution step missing or invalid 'bubble_size'. Using default.");
+                    }
+                    // Validate origin_point if provided
+                    if (step.origin_point && (typeof step.origin_point.x !== 'number' || typeof step.origin_point.y !== 'number' || typeof step.origin_point.z !== 'number')) {
+                        console.warn("Gas evolution step has invalid 'origin_point'. Using default.");
+                        step.origin_point = undefined; // Force default if invalid
+                    }
+                }
+                // Add validation for other new types here when implemented
+            }
+
             return true;
         }
 
@@ -779,7 +874,7 @@
         // --- Animation Engine ---
         function runAnimation(plan) {
             if (mainTimeline) mainTimeline.kill();
-            clearScene();
+            clearScene(); // Clears molecules AND gas bubbles
             
             if (particles) {
                 particles.visible = false;
@@ -873,6 +968,10 @@
                             productX += 5;
                         }
                     });
+                } else if (step.type === 'gas_evolution') { // NEW: Handle gas evolution step
+                    mainTimeline.add(() => {
+                        createGasBubbles(step);
+                    }, step.type);
                 }
             });
         }
@@ -918,10 +1017,16 @@
             - "isExothermic": (boolean) Phản ứng có tỏa nhiệt hay không (true nếu tỏa nhiệt, false nếu thu nhiệt hoặc không xác định).
             - "reactants": (array) Một mảng các đối tượng chất phản ứng, mỗi đối tượng có dạng {molecule: string, count: number, atoms: [{symbol: string, color: string}]}.
             - "products": (array) Một mảng các đối tượng sản phẩm, cấu trúc tương tự reactants.
-            - "animationSteps": (array) Một mảng các bước hoạt ảnh, mỗi bước có dạng {type: 'move_to_center' | 'break_bonds' | 'rearrange', text: string}.
+            - "animationSteps": (array) Một mảng các bước hoạt ảnh, mỗi bước có dạng {type: string, text: string, ...}.
+                Các loại type có thể có:
                 - 'move_to_center': Các phân tử di chuyển vào trung tâm buồng phản ứng.
                 - 'break_bonds': Liên kết giữa các nguyên tử bị phá vỡ, các nguyên tử tách rời.
                 - 'rearrange': Các nguyên tử tự sắp xếp lại để tạo thành sản phẩm mới.
+                - 'gas_evolution': Mô phỏng sự giải phóng khí. Cần các thuộc tính bổ sung:
+                    - 'gas_color': (string) Mã màu HEX của bong bóng khí (vd: '#ADD8E6' cho xanh nhạt).
+                    - 'bubble_count': (number) Số lượng bong bóng khí.
+                    - 'bubble_size': (number) Kích thước tương đối của mỗi bong bóng (0.05-0.5).
+                    - 'origin_point': (object, tùy chọn) Điểm bắt đầu của bong bóng {x: number, y: number, z: number}. Mặc định sẽ là dưới đáy.
 
             Sử dụng các màu sau cho nguyên tử (hãy tự suy ra các màu khác nếu cần):
             - H: #FFFFFF (Trắng)
@@ -947,22 +1052,22 @@
                 const result = await model.generateContent(prompt);
                 const textResponse = result.response.text();
                 
-                // Cố gắng dọn dẹp và phân tích JSON
+                // Try to clean and parse JSON
                 const cleanedText = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
                 let plan;
                 try {
                     plan = JSON.parse(cleanedText);
                 } catch (jsonError) {
-                    console.error("Lỗi phân tích cú pháp JSON:", jsonError);
+                    console.error("JSON parsing error:", jsonError);
                     throw new Error("Phản hồi của AI không phải là JSON hợp lệ. Vui lòng thử lại.");
                 }
 
-                // NEW: Validate the structure of the parsed plan
+                // Validate the structure of the parsed plan
                 validateReactionPlan(plan);
 
                 runAnimation(plan);
             } catch (error) {
-                console.error("Lỗi tạo hoạt ảnh hoặc xác thực:", error);
+                console.error("Error generating animation or validation:", error);
                 // Display a more specific message based on the type of error
                 if (error.message.includes("JSON hợp lệ") || error.message.includes("Phản hồi AI không phải là đối tượng hợp lệ")) {
                     displayMessage(`Lỗi định dạng dữ liệu từ AI: ${error.message}`, true);
