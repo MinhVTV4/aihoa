@@ -7,13 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Variables CSS cho màu sắc dễ quản lý */
+        /* Variables CSS for easy color management */
         :root {
             --dark-bg: #111827;
             --light-bg: #1f2937;
             --panel-bg: #374151;
-            --accent-color: #8b5cf6; /* Màu tím làm điểm nhấn */
-            --danger-color: #ef4444; /* Màu đỏ cho lỗi */
+            --accent-color: #8b5cf6; /* Accent purple color */
+            --danger-color: #ef4444; /* Red color for errors */
         }
         body {
             font-family: 'Inter', sans-serif;
@@ -22,8 +22,8 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            color: #e5e7eb; /* Màu chữ sáng */
-            padding: 1rem; /* Padding tổng thể */
+            color: #e5e7eb; /* Light text color */
+            padding: 1rem; /* Overall padding */
         }
         .simulation-container {
             width: 95vw;
@@ -34,10 +34,10 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 1.5rem;
             display: flex;
-            flex-direction: column; /* Sắp xếp các phần tử theo chiều dọc */
-            gap: 1rem; /* Khoảng cách giữa các phần tử */
+            flex-direction: column; /* Arrange elements vertically */
+            gap: 1rem; /* Space between elements */
         }
-        /* THAY ĐỔI: Thêm hiệu ứng bóng đổ cho tiêu đề */
+        /* Add text shadow effect to the title */
         h1 {
             text-shadow: 0 0 15px rgba(139, 92, 246, 0.7), 0 0 5px rgba(255, 255, 255, 0.5);
             transition: text-shadow 0.3s ease-in-out;
@@ -49,12 +49,12 @@
         #reaction-chamber {
             position: relative;
             width: 100%;
-            height: 500px; /* Chiều cao cố định cho buồng phản ứng */
+            height: 500px; /* Fixed height for the reaction chamber */
             background: var(--dark-bg);
             border-radius: 1rem;
-            overflow: hidden; /* Đảm bảo nội dung không tràn ra ngoài */
-            cursor: grab; /* Con trỏ kéo */
-            display: flex; /* Dùng flexbox để căn giữa nội dung lỗi WebGL */
+            overflow: hidden; /* Ensure content doesn't overflow */
+            cursor: grab; /* Grab cursor */
+            display: flex; /* Use flexbox to center WebGL error content */
             justify-content: center;
             align-items: center;
         }
@@ -63,6 +63,25 @@
             width: 100%;
             height: 100%;
         }
+        /* New: Style for the drag hint */
+        #drag-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1.1rem;
+            font-weight: 500;
+            pointer-events: none; /* Allow clicks to pass through */
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.5s ease-in-out;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            z-index: 10; /* Ensure it's above canvas */
+        }
+        #drag-hint.show {
+            opacity: 1;
+        }
+
         .ui-panel {
             background: var(--panel-bg);
             border-radius: 1rem;
@@ -76,26 +95,26 @@
             gap: 1rem;
             align-items: center;
         }
-        /* Cập nhật style cho textarea */
+        /* Update style for textarea */
         #equation-input {
-            flex-grow: 1; /* Cho phép textarea mở rộng */
+            flex-grow: 1; /* Allow textarea to expand */
             background: var(--light-bg);
             border: 1px solid var(--accent-color);
             border-radius: 0.5rem;
             padding: 0.75rem;
             color: #fff;
-            outline: none; /* Bỏ viền outline mặc định */
-            transition: border-color 0.3s; /* Hiệu ứng chuyển màu viền */
-            resize: vertical; /* Cho phép thay đổi kích thước theo chiều dọc */
-            min-height: 80px; /* Chiều cao tối thiểu */
+            outline: none; /* Remove default outline */
+            transition: border-color 0.3s; /* Border color transition */
+            resize: vertical; /* Allow vertical resizing */
+            min-height: 80px; /* Minimum height */
         }
         #equation-input:focus {
-            border-color: #a78bfa; /* Màu viền khi focus */
+            border-color: #a78bfa; /* Border color on focus */
         }
-        /* Class mới cho trạng thái lỗi */
+        /* New class for error state */
         #equation-input.input-error {
             border-color: var(--danger-color);
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5); /* Shadow đỏ cho lỗi */
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5); /* Red shadow for error */
         }
 
         .main-btn {
@@ -105,16 +124,16 @@
             border-radius: 0.5rem;
             border: none;
             cursor: pointer;
-            transition: all 0.3s ease; /* Hiệu ứng chuyển động mượt mà */
+            transition: all 0.3s ease; /* Smooth transition effect */
             font-weight: 600;
-            display: flex; /* Dùng flexbox để căn giữa spinner và text */
+            display: flex; /* Use flexbox to center spinner and text */
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
         }
         .main-btn:hover {
             box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
-            transform: translateY(-2px); /* Hiệu ứng nhấc nhẹ */
+            transform: translateY(-2px); /* Slight lift effect */
         }
         .main-btn:disabled {
             background-image: none;
@@ -129,8 +148,8 @@
             align-items: center;
             gap: 1rem;
             margin-top: 0.5rem;
-            flex-wrap: wrap; /* Cho phép các nút xuống dòng trên màn hình nhỏ */
-            justify-content: center; /* Căn giữa các nút */
+            flex-wrap: wrap; /* Allow buttons to wrap on small screens */
+            justify-content: center; /* Center align buttons */
         }
         .icon-btn {
             background: transparent;
@@ -158,12 +177,12 @@
             box-shadow: none;
         }
 
-        /* Thêm style cho thanh trượt tốc độ và thời gian */
+        /* Add style for speed and timeline sliders */
         .speed-control-group {
             display: flex;
             gap: 0.5rem;
             align-items: center;
-            margin-bottom: 0.5rem; /* Khoảng cách với thanh progress bar */
+            margin-bottom: 0.5rem; /* Space below progress bar */
         }
         .speed-btn {
             background-color: var(--panel-bg);
@@ -194,14 +213,14 @@
 
         #timeline-slider {
             width: 100%;
-            -webkit-appearance: none; /* Ẩn giao diện mặc định */
+            -webkit-appearance: none; /* Hide default appearance */
             height: 8px;
             background: #4b5563;
             border-radius: 99px;
             outline: none;
             opacity: 0.7;
             transition: opacity 0.2s;
-            margin-top: 1rem; /* Khoảng cách với các nút điều khiển */
+            margin-top: 1rem; /* Space from control buttons */
         }
         #timeline-slider:hover {
             opacity: 1;
@@ -232,27 +251,27 @@
             background: #4b5563;
             border-radius: 99px;
             overflow: hidden;
-            display: none; /* Ẩn thanh progress bar cũ, thay bằng slider mới */
+            display: none; /* Hide old progress bar, replaced by new slider */
         }
         #progress-bar {
             width: 0%;
             height: 100%;
             background: var(--accent-color);
             border-radius: 99px;
-            transition: width 0.3s ease; /* Hiệu ứng chuyển động cho thanh tiến trình */
+            transition: width 0.3s ease; /* Transition effect for progress bar */
         }
-        /* Cập nhật style cho info-text để nó hoạt động như toast */
+        /* Update style for info-text to act like a toast */
         #info-text {
             text-align: center;
-            min-height: 24px; /* Giữ chỗ để tránh nhảy layout */
+            min-height: 24px; /* Maintain space to prevent layout shift */
             color: #e5e7eb;
-            opacity: 0; /* Mặc định ẩn */
-            transition: opacity 0.3s ease-in-out, color 0.3s ease-in-out; /* Hiệu ứng chuyển đổi */
-            font-size: 1rem; /* THAY ĐỔI: Tăng kích thước chữ */
-            font-weight: 600; /* THAY ĐỔI: Tăng độ đậm chữ */
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.3s ease-in-out, color 0.3s ease-in-out; /* Transition effect */
+            font-size: 1rem; /* Increase font size */
+            font-weight: 600; /* Increase font weight */
         }
         #info-text.error-message {
-            color: var(--danger-color); /* Màu đỏ cho lỗi */
+            color: var(--danger-color); /* Red color for errors */
         }
 
         /* Spinner CSS */
@@ -270,11 +289,11 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Thông báo lỗi WebGL */
+        /* WebGL Error message */
         .webgl-error-message {
             text-align: center;
             padding: 1.5rem;
-            background-color: var(--danger-color); /* Nền đỏ cho lỗi */
+            background-color: var(--danger-color); /* Red background for errors */
             color: white;
             border-radius: 0.75rem;
             font-size: 1rem;
@@ -296,7 +315,7 @@
             color: #fff;
         }
 
-        /* THAY ĐỔI MỚI: CSS cho Welcome Modal */
+        /* New: CSS for Welcome Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -363,7 +382,9 @@
     <div class="simulation-container">
         <h1 class="text-2xl font-bold text-center mb-4">Nhà Hóa học AI v3.0</h1>
         <div id="reaction-chamber">
-            <!-- Thông báo lỗi WebGL sẽ được chèn vào đây nếu cần -->
+            <!-- WebGL error message will be inserted here if needed -->
+            <!-- New: Drag hint for 3D interaction -->
+            <div id="drag-hint">Kéo để xoay</div>
         </div>
         <div class="ui-panel">
             <div class="input-group">
@@ -393,7 +414,7 @@
         </div>
     </div>
 
-    <!-- THAY ĐỔI MỚI: Welcome Modal -->
+    <!-- Welcome Modal -->
     <div id="welcome-modal-overlay" class="modal-overlay">
         <div class="welcome-modal">
             <h2>Chào mừng đến với Nhà Hóa học AI v3.0!</h2>
@@ -424,11 +445,11 @@
         try {
             const app = initializeApp(firebaseConfig);
             const ai = getAI(app, { backend: new GoogleAIBackend() });
-            // Sử dụng gemini-2.5-flash để tạo nội dung
+            // Use gemini-2.5-flash for content generation
             model = getGenerativeModel(ai, { model: "gemini-2.5-flash" });
         } catch (e) {
-            console.error("Lỗi khởi tạo Firebase/AI:", e);
-            // Hiển thị lỗi nếu không thể khởi tạo AI
+            console.error("Firebase/AI initialization error:", e);
+            // Display error if AI cannot be initialized
             displayMessage("Lỗi: Không thể kết nối với AI Engine. Vui lòng kiểm tra console để biết chi tiết.", true);
             document.getElementById('generate-btn').disabled = true;
         }
@@ -439,7 +460,7 @@
         let particles;
 
         function init3D() {
-            chamber.innerHTML = '';
+            chamber.innerHTML = ''; // Clear old WebGL error content if any
             try {
                 scene = new THREE.Scene();
                 camera = new THREE.PerspectiveCamera(75, chamber.clientWidth / chamber.clientHeight, 0.1, 1000);
@@ -448,6 +469,7 @@
                 renderer.setPixelRatio(window.devicePixelRatio);
                 chamber.appendChild(renderer.domElement);
 
+                // Setup Post-processing (Bloom effect)
                 const renderPass = new RenderPass(scene, camera);
                 const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
                 bloomPass.threshold = 0;
@@ -460,6 +482,7 @@
                 composer.addPass(bloomPass);
                 composer.addPass(outputPass);
 
+                // Add lights
                 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
                 scene.add(ambientLight);
                 const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -468,16 +491,19 @@
 
                 camera.position.z = 15;
 
+                // OrbitControls for camera interaction
                 controls = new OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
 
+                // Add particle system
                 const particleCount = 1000;
                 const positions = new Float32Array(particleCount * 3);
                 const colors = new Float32Array(particleCount * 3);
-                const particleColor = new THREE.Color(0xffffff);
-                const sphereRadius = 20;
+                const particleColor = new THREE.Color(0xffffff); // White color
+                const sphereRadius = 20; // Radius of the particle distribution area
 
                 for (let i = 0; i < particleCount; i++) {
+                    // Generate random positions within a sphere
                     const x = (Math.random() - 0.5) * 2 * sphereRadius;
                     const y = (Math.random() - 0.5) * 2 * sphereRadius;
                     const z = (Math.random() - 0.5) * 2 * sphereRadius;
@@ -486,6 +512,7 @@
                     positions[i * 3 + 1] = y;
                     positions[i * 3 + 2] = z;
 
+                    // Assign white color with slight opacity
                     colors[i * 3] = particleColor.r;
                     colors[i * 3 + 1] = particleColor.g;
                     colors[i * 3 + 2] = particleColor.b;
@@ -496,20 +523,22 @@
                 particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
                 const particleMaterial = new THREE.PointsMaterial({
-                    size: 0.1,
-                    vertexColors: true,
+                    size: 0.1, // Particle size
+                    vertexColors: true, // Use colors from attribute
                     transparent: true,
                     opacity: 0.5,
-                    blending: THREE.AdditiveBlending
+                    blending: THREE.AdditiveBlending // Additive blending for brighter particles
                 });
 
                 particles = new THREE.Points(particleGeometry, particleMaterial);
                 scene.add(particles);
-                particles.visible = true;
+                particles.visible = true; // Show particles by default
 
+                // Main animation loop
                 function animate() {
                     requestAnimationFrame(animate);
                     controls.update();
+                    // Rotate particles gently
                     if (particles && particles.visible) {
                         particles.rotation.y += 0.0005;
                         particles.rotation.x += 0.0002;
@@ -518,6 +547,7 @@
                 }
                 animate();
 
+                // Listen for window resize events
                 window.addEventListener('resize', () => {
                     camera.aspect = chamber.clientWidth / chamber.clientHeight;
                     camera.updateProjectionMatrix();
@@ -526,7 +556,8 @@
                 });
 
             } catch (error) {
-                console.error("Lỗi khởi tạo WebGL:", error);
+                console.error("WebGL initialization error:", error);
+                // Display more user-friendly error message
                 chamber.innerHTML = `
                     <div class="webgl-error-message">
                         <h2>Lỗi WebGL</h2>
@@ -549,8 +580,8 @@
         const loadingSpinner = document.getElementById('loading-spinner');
         const speedButtons = document.querySelectorAll('.speed-btn');
         const timelineSlider = document.getElementById('timeline-slider');
+        const dragHint = document.getElementById('drag-hint'); // New: Reference to drag hint element
 
-        // THAY ĐỔI MỚI: Biến và tham chiếu cho modal
         const welcomeModalOverlay = document.getElementById('welcome-modal-overlay');
         const modalCloseBtn = document.getElementById('modal-close-btn');
 
@@ -575,6 +606,18 @@
                 }, 5000);
             }
         }
+
+        // New: Function to show/hide drag hint
+        function toggleDragHint(show) {
+            if (dragHint) {
+                if (show) {
+                    dragHint.classList.add('show');
+                } else {
+                    dragHint.classList.remove('show');
+                }
+            }
+        }
+
 
         function clearScene() {
             molecules.forEach(m => {
@@ -623,6 +666,7 @@
             if (particles) {
                 particles.visible = false;
             }
+            toggleDragHint(false); // New: Hide drag hint when animation starts
 
             displayMessage(`Đang chuẩn bị hoạt ảnh cho: ${plan.title}`);
 
@@ -640,6 +684,7 @@
                     if (particles) {
                         particles.visible = true;
                     }
+                    toggleDragHint(true); // New: Show drag hint when animation completes
                 }
             });
 
@@ -735,6 +780,7 @@
             if (particles) {
                 particles.visible = false;
             }
+            toggleDragHint(false); // New: Hide drag hint when AI is processing
 
             const prompt = `
             Từ các chất tham gia do người dùng cung cấp là: "${userInput}".
@@ -781,11 +827,12 @@
 
                 runAnimation(plan);
             } catch (error) {
-                console.error("Lỗi phân tích hoặc tạo hoạt ảnh:", error);
+                console.error("Error parsing or generating animation:", error);
                 displayMessage("Đã có lỗi xảy ra. AI có thể đã trả về định dạng không đúng hoặc gặp lỗi. Vui lòng thử lại.", true);
                 if (particles) {
                     particles.visible = true;
                 }
+                toggleDragHint(true); // New: Show drag hint if AI processing fails
             } finally {
                 generateBtn.disabled = false;
                 loadingSpinner.classList.add('hidden');
@@ -821,37 +868,33 @@
             }
         });
 
-        // THAY ĐỔI MỚI: Logic hiển thị modal chào mừng
+        // Logic to show/hide welcome modal
         function showWelcomeModal() {
-            // Kiểm tra localStorage để xem người dùng đã truy cập trước đó chưa
             const hasVisited = localStorage.getItem('hasVisitedChemicalAIApp');
             if (!hasVisited) {
                 welcomeModalOverlay.classList.add('show');
-                // Vô hiệu hóa tương tác với ứng dụng chính khi modal hiển thị
-                document.body.style.overflow = 'hidden'; // Ngăn cuộn trang
+                document.body.style.overflow = 'hidden';
             } else {
-                // Nếu đã truy cập, khởi tạo ứng dụng bình thường
                 initApp();
             }
         }
 
         function hideWelcomeModal() {
             welcomeModalOverlay.classList.remove('show');
-            localStorage.setItem('hasVisitedChemicalAIApp', 'true'); // Đánh dấu đã truy cập
-            document.body.style.overflow = ''; // Cho phép cuộn trang trở lại
-            initApp(); // Khởi tạo ứng dụng sau khi modal đóng
+            localStorage.setItem('hasVisitedChemicalAIApp', 'true');
+            document.body.style.overflow = '';
+            initApp();
         }
 
         function initApp() {
             init3D();
             generateBtn.addEventListener('click', generateReactionPlan);
             displayMessage("Hãy xem AI dự đoán và diễn họa phản ứng hóa học!");
+            toggleDragHint(true); // New: Show drag hint initially when app is ready
         }
 
-        // THAY ĐỔI MỚI: Lắng nghe sự kiện đóng modal
         modalCloseBtn.addEventListener('click', hideWelcomeModal);
 
-        // Bắt đầu bằng cách kiểm tra và hiển thị modal
         showWelcomeModal();
     </script>
 </body>
