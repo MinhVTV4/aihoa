@@ -7,7 +7,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --dark-bg: #111827; --light-bg: #1f2937; --panel-bg: #374151; --accent-color: #8b5cf6; }
+        /* Variables CSS cho màu sắc dễ quản lý */
+        :root {
+            --dark-bg: #111827;
+            --light-bg: #1f2937;
+            --panel-bg: #374151;
+            --accent-color: #8b5cf6; /* Màu tím làm điểm nhấn */
+            --danger-color: #ef4444; /* Màu đỏ cho lỗi */
+        }
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--dark-bg);
@@ -15,7 +22,8 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            color: #e5e7eb;
+            color: #e5e7eb; /* Màu chữ sáng */
+            padding: 1rem; /* Padding tổng thể */
         }
         .simulation-container {
             width: 95vw;
@@ -25,70 +33,186 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 1.5rem;
+            display: flex;
+            flex-direction: column; /* Sắp xếp các phần tử theo chiều dọc */
+            gap: 1rem; /* Khoảng cách giữa các phần tử */
         }
         #reaction-chamber {
             position: relative;
             width: 100%;
-            height: 500px;
+            height: 500px; /* Chiều cao cố định cho buồng phản ứng */
             background: var(--dark-bg);
             border-radius: 1rem;
-            overflow: hidden;
-            cursor: grab;
+            overflow: hidden; /* Đảm bảo nội dung không tràn ra ngoài */
+            cursor: grab; /* Con trỏ kéo */
+            display: flex; /* Dùng flexbox để căn giữa nội dung lỗi WebGL */
+            justify-content: center;
+            align-items: center;
         }
-        #reaction-chamber canvas { display: block; }
+        #reaction-chamber canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
         .ui-panel {
             background: var(--panel-bg);
             border-radius: 1rem;
             padding: 1.25rem;
-            margin-top: 1rem;
             display: flex;
             flex-direction: column;
             gap: 1rem;
         }
-        .input-group { display: flex; gap: 1rem; align-items: center; }
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
         #equation-input {
-            flex-grow: 1;
+            flex-grow: 1; /* Cho phép input mở rộng */
             background: var(--light-bg);
             border: 1px solid var(--accent-color);
             border-radius: 0.5rem;
             padding: 0.75rem;
             color: #fff;
+            outline: none; /* Bỏ viền outline mặc định */
+            transition: border-color 0.3s; /* Hiệu ứng chuyển màu viền */
+        }
+        #equation-input:focus {
+            border-color: #a78bfa; /* Màu viền khi focus */
         }
         .main-btn {
             background-image: linear-gradient(to right, #6366f1, var(--accent-color));
-            color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem;
-            border: none; cursor: pointer; transition: all 0.3s;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease; /* Hiệu ứng chuyển động mượt mà */
             font-weight: 600;
+            display: flex; /* Dùng flexbox để căn giữa spinner và text */
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
-        .main-btn:hover { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
-        .main-btn:disabled { background-image: none; background-color: #4b5563; cursor: not-allowed; }
-        
-        #controls-bar { display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;}
-        .icon-btn {
-            background: transparent; border: 1px solid #6b7280;
-            color: #d1d5db; width: 40px; height: 40px;
-            border-radius: 50%; display: flex;
-            justify-content: center; align-items: center;
-            cursor: pointer; transition: all 0.2s; font-size: 1.2rem;
+        .main-btn:hover {
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+            transform: translateY(-2px); /* Hiệu ứng nhấc nhẹ */
         }
-        .icon-btn:hover { border-color: var(--accent-color); color: white; }
-        .icon-btn:disabled { color: #6b7280; border-color: #4b5563; cursor: not-allowed;}
+        .main-btn:disabled {
+            background-image: none;
+            background-color: #4b5563;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
 
-        #progress-container { flex-grow: 1; height: 8px; background: #4b5563; border-radius: 99px; overflow: hidden;}
-        #progress-bar { width: 0%; height: 100%; background: var(--accent-color); border-radius: 99px; }
-        #info-text { text-align: center; min-height: 24px; }
-        .loading-spinner { /* ... spinner styles ... */ }
+        #controls-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        .icon-btn {
+            background: transparent;
+            border: 1px solid #6b7280;
+            color: #d1d5db;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.2rem;
+        }
+        .icon-btn:hover {
+            border-color: var(--accent-color);
+            color: white;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+        }
+        .icon-btn:disabled {
+            color: #6b7280;
+            border-color: #4b5563;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        #progress-container {
+            flex-grow: 1;
+            height: 8px;
+            background: #4b5563;
+            border-radius: 99px;
+            overflow: hidden;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--accent-color);
+            border-radius: 99px;
+            transition: width 0.3s ease; /* Hiệu ứng chuyển động cho thanh tiến trình */
+        }
+        #info-text {
+            text-align: center;
+            min-height: 24px; /* Giữ chỗ để tránh nhảy layout */
+            color: #e5e7eb;
+        }
+
+        /* Spinner CSS */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 1.5rem;
+            height: 1.5rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Thông báo lỗi WebGL */
+        .webgl-error-message {
+            text-align: center;
+            padding: 1.5rem;
+            background-color: var(--danger-color); /* Nền đỏ cho lỗi */
+            color: white;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            max-width: 80%;
+        }
+        .webgl-error-message h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .webgl-error-message p {
+            margin-bottom: 0.5rem;
+        }
+        .webgl-error-message a {
+            color: #fee2e2;
+            text-decoration: underline;
+        }
+        .webgl-error-message a:hover {
+            color: #fff;
+        }
     </style>
 </head>
 <body>
     <div class="simulation-container">
         <h1 class="text-2xl font-bold text-center mb-4">Nhà Hóa học AI v3.0</h1>
-        <div id="reaction-chamber"></div>
+        <div id="reaction-chamber">
+            <!-- Thông báo lỗi WebGL sẽ được chèn vào đây nếu cần -->
+        </div>
         <div class="ui-panel">
             <div class="input-group">
-                <!-- Thay đổi ở đây: Cập nhật giá trị và placeholder -->
                 <input id="equation-input" type="text" value="Hydro và Oxy" placeholder="Nhập các chất tham gia (vd: Sắt và Oxi)...">
-                <button id="generate-btn" class="main-btn">Tạo Phản ứng</button>
+                <button id="generate-btn" class="main-btn">
+                    Tạo Phản ứng
+                    <div id="loading-spinner" class="spinner hidden"></div>
+                </button>
             </div>
              <div id="controls-bar">
                 <button id="play-pause-btn" class="icon-btn" disabled>▶️</button>
@@ -114,38 +238,95 @@
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-        
-        // --- Firebase, AI, 3D Engine Setup (giữ nguyên) ---
+
+        // --- Firebase, AI, 3D Engine Setup ---
         const firebaseConfig = { apiKey: "AIzaSyBVpguEIjTnIVOk1Ld0u-BGC7nM-pSww_o", authDomain: "aihoa-ac63b.firebaseapp.com", projectId: "aihoa-ac63b", storageBucket: "aihoa-ac63b.firebasestorage.app", messagingSenderId: "241068548961", appId: "1:241068548961:web:33d4126d020e9372d15b20"};
-        let model; try { const app = initializeApp(firebaseConfig); const ai = getAI(app, { backend: new GoogleAIBackend() }); model = getGenerativeModel(ai, { model: "gemini-2.5-flash" }); } catch (e) { console.error("Lỗi khởi tạo Firebase/AI:", e); }
+        let model;
+        try {
+            const app = initializeApp(firebaseConfig);
+            const ai = getAI(app, { backend: new GoogleAIBackend() });
+            // Sử dụng gemini-2.5-flash để tạo nội dung
+            model = getGenerativeModel(ai, { model: "gemini-2.5-flash" });
+        } catch (e) {
+            console.error("Lỗi khởi tạo Firebase/AI:", e);
+            // Hiển thị lỗi nếu không thể khởi tạo AI
+            document.getElementById('info-text').innerText = "Lỗi: Không thể kết nối với AI Engine. Vui lòng kiểm tra console để biết chi tiết.";
+            document.getElementById('generate-btn').disabled = true;
+        }
+
         const chamber = document.getElementById('reaction-chamber');
         let renderer, scene, camera, controls, composer, mainTimeline;
         let molecules = [];
 
-        function init3D() { 
-             try {
+        function init3D() {
+            // Xóa nội dung lỗi WebGL cũ nếu có
+            chamber.innerHTML = '';
+            try {
                 scene = new THREE.Scene();
                 camera = new THREE.PerspectiveCamera(75, chamber.clientWidth / chamber.clientHeight, 0.1, 1000);
                 renderer = new THREE.WebGLRenderer({ antialias: true });
                 renderer.setSize(chamber.clientWidth, chamber.clientHeight);
                 renderer.setPixelRatio(window.devicePixelRatio);
                 chamber.appendChild(renderer.domElement);
+
+                // Cài đặt Post-processing (Bloom effect)
                 const renderPass = new RenderPass(scene, camera);
                 const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-                bloomPass.threshold = 0; bloomPass.strength = 1.2; bloomPass.radius = 0.5;
+                bloomPass.threshold = 0;
+                bloomPass.strength = 1.2;
+                bloomPass.radius = 0.5;
                 const outputPass = new OutputPass();
+
                 composer = new EffectComposer(renderer);
-                composer.addPass(renderPass); composer.addPass(bloomPass); composer.addPass(outputPass);
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); scene.add(ambientLight);
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); directionalLight.position.set(5, 10, 7.5); scene.add(directionalLight);
-                camera.position.z = 15;
+                composer.addPass(renderPass);
+                composer.addPass(bloomPass);
+                composer.addPass(outputPass);
+
+                // Thêm đèn
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+                directionalLight.position.set(5, 10, 7.5);
+                scene.add(directionalLight);
+
+                camera.position.z = 15; // Đặt vị trí ban đầu của camera
+
+                // Điều khiển OrbitControls cho phép xoay, phóng to/thu nhỏ khung cảnh
                 controls = new OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-                function animate() { requestAnimationFrame(animate); controls.update(); composer.render(); }
+                controls.enableDamping = true; // Cho phép hiệu ứng "độ trễ" khi xoay
+
+                // Vòng lặp hoạt ảnh chính
+                function animate() {
+                    requestAnimationFrame(animate);
+                    controls.update(); // Cập nhật điều khiển
+                    composer.render(); // Render scene với post-processing
+                }
                 animate();
-            } catch (error) { chamber.innerHTML = `<div class="p-4 text-center text-red-300"><h2>Lỗi WebGL</h2><p>Không thể tạo môi trường 3D.</p></div>`; throw new Error("WebGL init failed"); }
+
+                // Lắng nghe sự kiện thay đổi kích thước cửa sổ
+                window.addEventListener('resize', () => {
+                    camera.aspect = chamber.clientWidth / chamber.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(chamber.clientWidth, chamber.clientHeight);
+                    composer.setSize(chamber.clientWidth, chamber.clientHeight);
+                });
+
+            } catch (error) {
+                console.error("Lỗi khởi tạo WebGL:", error);
+                // Hiển thị thông báo lỗi thân thiện hơn
+                chamber.innerHTML = `
+                    <div class="webgl-error-message">
+                        <h2>Lỗi WebGL</h2>
+                        <p>Trình duyệt của bạn có thể không hỗ trợ hoặc WebGL đang bị tắt.</p>
+                        <p>Để trải nghiệm hoạt ảnh 3D, vui lòng đảm bảo trình duyệt của bạn được cập nhật và WebGL được bật.</p>
+                        <p><a href="https://get.webgl.org/" target="_blank">Kiểm tra trạng thái WebGL của bạn tại đây</a></p>
+                    </div>
+                `;
+                // Vô hiệu hóa nút tạo phản ứng nếu 3D không thể khởi tạo
+                generateBtn.disabled = true;
+                throw new Error("WebGL init failed");
+            }
         }
-        window.addEventListener('resize', () => { /* ... resize logic ... */ });
 
         // --- Core Application Logic ---
         const generateBtn = document.getElementById('generate-btn');
@@ -154,131 +335,163 @@
         const playPauseBtn = document.getElementById('play-pause-btn');
         const restartBtn = document.getElementById('restart-btn');
         const progressBar = document.getElementById('progress-bar');
+        const loadingSpinner = document.getElementById('loading-spinner'); // Spinner mới
 
-        function clearScene() { 
-             molecules.forEach(m => {
+        function clearScene() {
+            // Loại bỏ tất cả các phân tử khỏi scene và giải phóng bộ nhớ
+            molecules.forEach(m => {
                 m.children.forEach(c => {
-                    c.geometry.dispose();
-                    c.material.dispose();
+                    if (c.geometry) c.geometry.dispose();
+                    if (c.material) c.material.dispose();
                 });
                 scene.remove(m);
             });
             molecules = [];
         }
 
+        // Hàm vẽ phân tử 3D
         function drawMolecule3D(moleculeDef, x, y, z) {
             const group = new THREE.Group();
-            const atomRadius = 0.5;
+            const atomRadius = 0.5; // Bán kính nguyên tử
+
             moleculeDef.atoms.forEach((atomDef, i) => {
                 const geometry = new THREE.SphereGeometry(atomRadius, 32, 32);
-                const material = new THREE.MeshStandardMaterial({ color: atomDef.color, metalness: 0.4, roughness: 0.4, emissive: '#000000' });
+                // Tạo vật liệu với hiệu ứng kim loại và độ nhám
+                const material = new THREE.MeshStandardMaterial({
+                    color: atomDef.color,
+                    metalness: 0.4,
+                    roughness: 0.4,
+                    emissive: '#000000' // Không phát sáng ban đầu
+                });
                 const atomMesh = new THREE.Mesh(geometry, material);
-                if (moleculeDef.atoms.length > 1) { const angle = (i / moleculeDef.atoms.length) * 2 * Math.PI; atomMesh.position.x = Math.cos(angle) * atomRadius; atomMesh.position.y = Math.sin(angle) * atomRadius; }
+
+                // Sắp xếp các nguyên tử trong phân tử (đơn giản hóa)
+                if (moleculeDef.atoms.length > 1) {
+                    const angle = (i / moleculeDef.atoms.length) * 2 * Math.PI;
+                    atomMesh.position.x = Math.cos(angle) * atomRadius * 1.5; // Mở rộng khoảng cách một chút
+                    atomMesh.position.y = Math.sin(angle) * atomRadius * 1.5;
+                }
                 group.add(atomMesh);
             });
-            group.position.set(x, y, z);
-            scene.add(group);
-            molecules.push(group);
+
+            group.position.set(x, y, z); // Đặt vị trí nhóm phân tử
+            scene.add(group); // Thêm vào scene
+            molecules.push(group); // Lưu trữ để quản lý
             return group;
         }
-        
+
         // --- Animation Engine ---
         function runAnimation(plan) {
-            if (mainTimeline) mainTimeline.kill(); 
-            clearScene();
-            
+            // Dừng và xóa timeline cũ nếu có
+            if (mainTimeline) mainTimeline.kill();
+            clearScene(); // Xóa các phân tử cũ
+
             // Cập nhật tiêu đề phản ứng trên UI
             infoText.innerText = `Đang chuẩn bị hoạt ảnh cho: ${plan.title}`;
 
+            // Khởi tạo GSAP Timeline
             mainTimeline = gsap.timeline({
-                 onUpdate: () => {
+                onUpdate: () => {
                     progressBar.style.width = `${mainTimeline.progress() * 100}%`;
                     playPauseBtn.textContent = mainTimeline.paused() ? "▶️" : "⏸️";
-                 },
-                 onComplete: () => {
+                },
+                onComplete: () => {
                     infoText.innerText = "Hoạt ảnh hoàn tất!";
                     playPauseBtn.textContent = "▶️";
-                    playPauseBtn.disabled = true;
-                 }
+                    playPauseBtn.disabled = true; // Vô hiệu hóa nút play/pause khi hoàn thành
+                }
             });
-            
+
+            // Kích hoạt các nút điều khiển
             playPauseBtn.disabled = false;
             restartBtn.disabled = false;
-            playPauseBtn.textContent = "⏸️";
+            playPauseBtn.textContent = "⏸️"; // Đặt thành pause ban đầu
 
             const reactantObjects = [];
-            let reactantX = -10;
+            let reactantX = -10; // Vị trí X ban đầu cho chất phản ứng
+
+            // Vẽ các chất phản ứng
             plan.reactants.forEach((r) => {
                 for (let j = 0; j < r.count; j++) {
                     const moleculeObj = drawMolecule3D(r, reactantX, (j % 2 === 0 ? 1 : -1) * 4, 0);
-                    reactantObjects.push({obj: moleculeObj});
-                    reactantX += 5;
+                    reactantObjects.push({ obj: moleculeObj });
+                    reactantX += 5; // Di chuyển vị trí X cho phân tử tiếp theo
                 }
             });
-            
-             plan.animationSteps.forEach(step => {
-                // Tạo một label và một callback để cập nhật text tại cùng một thời điểm
+
+            // Thêm các bước hoạt ảnh vào timeline
+            plan.animationSteps.forEach(step => {
+                // Thêm một label và một callback để cập nhật text tại cùng một thời điểm
                 mainTimeline.add(() => { infoText.innerText = step.text || '...'; }, step.type);
 
-                if (step.type === 'move_to_center') { 
+                if (step.type === 'move_to_center') {
+                    // Di chuyển camera và các phân tử vào trung tâm
                     mainTimeline.to(camera.position, { z: 25, duration: 2.5, ease: "power2.inOut"}, step.type);
-                    reactantObjects.forEach((m, i) => { 
-                        mainTimeline.to(m.obj.position, { x: (i % 3 - 1) * 3, y: Math.floor(i / 3) * 3 - 1, z: 0, duration: 2.5, ease: "power2.inOut" }, step.type); 
+                    reactantObjects.forEach((m, i) => {
+                        mainTimeline.to(m.obj.position, { x: (i % 3 - 1) * 3, y: Math.floor(i / 3) * 3 - 1, z: 0, duration: 2.5, ease: "power2.inOut" }, step.type);
                     });
-                } else if (step.type === 'break_bonds') { 
-                    mainTimeline.to(camera.position, { z: 12, duration: 2, ease: "power2.inOut"}, step.type); 
-                    reactantObjects.forEach(m => { 
-                        m.obj.children.forEach((atomMesh, i) => { 
-                            mainTimeline.to(atomMesh.material.emissive, { r: 1, g: 1, b: 0.8, duration: 1, ease: "power2.in" }, step.type); 
-                            const angle = (i / m.obj.children.length) * 2 * Math.PI; 
-                            mainTimeline.to(atomMesh.position, { x: atomMesh.position.x + Math.cos(angle) * 0.8, y: atomMesh.position.y + Math.sin(angle) * 0.8, duration: 2, ease: "back.out(4)" }, step.type); 
-                        }); 
-                    }); 
-                } else if (step.type === 'rearrange') { 
-                    reactantObjects.forEach(m => { 
-                        mainTimeline.to(m.obj.children.map(c => c.material), { opacity: 0, duration: 1, onComplete: () => scene.remove(m.obj) }, step.type); 
-                    }); 
-                    if (plan.isExothermic) { 
-                        mainTimeline.add(() => { 
-                            const shockwaveGeo = new THREE.TorusGeometry(1, 0.1, 16, 100); 
-                            const shockwaveMat = new THREE.MeshBasicMaterial({ color: 0xffffee, transparent: true, opacity: 1 }); 
-                            const shockwave = new THREE.Mesh(shockwaveGeo, shockwaveMat); 
-                            shockwave.rotation.x = Math.PI / 2; 
-                            scene.add(shockwave); 
-                            gsap.to(shockwave.scale, { x: 20, y: 20, z: 20, duration: 2, ease: "power1.out" }); 
-                            gsap.to(shockwave.material, { opacity: 0, duration: 2, ease: "power1.out", onComplete: () => scene.remove(shockwave) }); 
-                        }, step.type + "+=0.5"); 
-                    } 
-                    let productX = -5; 
-                    plan.products.forEach(p => { 
-                        for (let j = 0; j < p.count; j++) { 
-                            const productObj = drawMolecule3D(p, productX, (j % 2 === 0 ? 1 : -1) * 3, 0); 
-                            productObj.children.forEach(c => { c.material.transparent = true; c.material.opacity = 0; }); 
-                            mainTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, step.type + "+=1"); 
-                            mainTimeline.to(productObj.children.map(c => c.material.emissive), { r: 0, g: 0, b: 0, duration: 2 }, step.type + "+=1"); 
-                            productX += 5; 
-                        } 
-                    }); 
+                } else if (step.type === 'break_bonds') {
+                    // Phá vỡ liên kết, các nguyên tử tách ra và phát sáng
+                    mainTimeline.to(camera.position, { z: 12, duration: 2, ease: "power2.inOut"}, step.type);
+                    reactantObjects.forEach(m => {
+                        m.obj.children.forEach((atomMesh, i) => {
+                            mainTimeline.to(atomMesh.material.emissive, { r: 1, g: 1, b: 0.8, duration: 1, ease: "power2.in" }, step.type);
+                            const angle = (i / m.obj.children.length) * 2 * Math.PI;
+                            mainTimeline.to(atomMesh.position, { x: atomMesh.position.x + Math.cos(angle) * 0.8, y: atomMesh.position.y + Math.sin(angle) * 0.8, duration: 2, ease: "back.out(4)" }, step.type);
+                        });
+                    });
+                } else if (step.type === 'rearrange') {
+                    // Sắp xếp lại, các phân tử cũ biến mất, sản phẩm mới xuất hiện
+                    reactantObjects.forEach(m => {
+                        mainTimeline.to(m.obj.children.map(c => c.material), { opacity: 0, duration: 1, onComplete: () => scene.remove(m.obj) }, step.type);
+                    });
+
+                    // Hiệu ứng tỏa nhiệt nếu là phản ứng tỏa nhiệt
+                    if (plan.isExothermic) {
+                        mainTimeline.add(() => {
+                            const shockwaveGeo = new THREE.TorusGeometry(1, 0.1, 16, 100);
+                            const shockwaveMat = new THREE.MeshBasicMaterial({ color: 0xffffee, transparent: true, opacity: 1 });
+                            const shockwave = new THREE.Mesh(shockwaveGeo, shockwaveMat);
+                            shockwave.rotation.x = Math.PI / 2;
+                            scene.add(shockwave);
+                            gsap.to(shockwave.scale, { x: 20, y: 20, z: 20, duration: 2, ease: "power1.out" });
+                            gsap.to(shockwave.material, { opacity: 0, duration: 2, ease: "power1.out", onComplete: () => scene.remove(shockwave) });
+                        }, step.type + "+=0.5"); // Hiệu ứng xuất hiện sau một chút
+
+                    }
+
+                    let productX = -5; // Vị trí X ban đầu cho sản phẩm
+                    // Vẽ các sản phẩm mới
+                    plan.products.forEach(p => {
+                        for (let j = 0; j < p.count; j++) {
+                            const productObj = drawMolecule3D(p, productX, (j % 2 === 0 ? 1 : -1) * 3, 0);
+                            productObj.children.forEach(c => { c.material.transparent = true; c.material.opacity = 0; }); // Ban đầu ẩn sản phẩm
+                            mainTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, step.type + "+=1"); // Hiệu ứng xuất hiện
+                            mainTimeline.to(productObj.children.map(c => c.material.emissive), { r: 0, g: 0, b: 0, duration: 2 }, step.type + "+=1"); // Tắt phát sáng
+                            productX += 5;
+                        }
+                    });
                 }
             });
         }
 
         async function generateReactionPlan() {
-            if (!model || !renderer) { 
-                infoText.innerText = "Lỗi: Engine AI chưa sẵn sàng.";
-                return; 
+            // Kiểm tra trạng thái AI engine và renderer
+            if (!model || !renderer) {
+                infoText.innerText = "Lỗi: Engine AI hoặc môi trường 3D chưa sẵn sàng.";
+                return;
             }
             const userInput = input.value;
-            if (!userInput) { 
+            if (!userInput) {
                 infoText.innerText = "Vui lòng nhập các chất tham gia.";
-                return; 
+                return;
             }
 
             infoText.innerHTML = 'AI đang tư duy... 🧠';
-            generateBtn.disabled = true;
+            generateBtn.disabled = true; // Vô hiệu hóa nút
+            loadingSpinner.classList.remove('hidden'); // Hiển thị spinner
 
-            // --- THAY ĐỔI LỚN Ở ĐÂY: PROMPT MỚI ---
-            // Yêu cầu AI thực hiện nhiều việc hơn: dự đoán, cân bằng, rồi mới tạo kịch bản
+            // Prompt mới cho AI
             const prompt = `
             Từ các chất tham gia do người dùng cung cấp là: "${userInput}".
             Hãy thực hiện các bước sau một cách tuần tự:
@@ -288,10 +501,13 @@
 
             Đối tượng JSON phải có cấu trúc chính xác như sau:
             - "title": (string) Phương trình hóa học đầy đủ mà bạn đã tạo (ví dụ: "2H2 + O2 -> 2H2O").
-            - "isExothermic": (boolean) Phản ứng có tỏa nhiệt hay không.
+            - "isExothermic": (boolean) Phản ứng có tỏa nhiệt hay không (true nếu tỏa nhiệt, false nếu thu nhiệt hoặc không xác định).
             - "reactants": (array) Một mảng các đối tượng chất phản ứng, mỗi đối tượng có dạng {molecule: string, count: number, atoms: [{symbol: string, color: string}]}.
             - "products": (array) Một mảng các đối tượng sản phẩm, cấu trúc tương tự reactants.
             - "animationSteps": (array) Một mảng các bước hoạt ảnh, mỗi bước có dạng {type: 'move_to_center' | 'break_bonds' | 'rearrange', text: string}.
+                - 'move_to_center': Các phân tử di chuyển vào trung tâm buồng phản ứng.
+                - 'break_bonds': Liên kết giữa các nguyên tử bị phá vỡ, các nguyên tử tách rời.
+                - 'rearrange': Các nguyên tử tự sắp xếp lại để tạo thành sản phẩm mới.
 
             Sử dụng các màu sau cho nguyên tử (hãy tự suy ra các màu khác nếu cần):
             - H: #FFFFFF (Trắng)
@@ -302,39 +518,52 @@
             - S: #FFF36B (Vàng)
             - Cl: #6BFF8B (Xanh lá)
             - Na: #B06BFF (Tím)
+            - K: #8A2BE2 (Tím nhạt)
+            - Mg: #BDB76B (Vàng xanh)
+            - Ca: #DDA0DD (Tím hoa cà)
+            - Al: #C0C0C0 (Bạc)
+            - P: #FFA500 (Cam)
+            - Br: #A52A2A (Nâu)
+            - I: #4B0082 (Chàm)
 
             Quan trọng: Chỉ trả lời bằng một khối mã JSON hợp lệ duy nhất, không chứa "'''json" hay bất kỳ văn bản giải thích nào khác.
             `;
-            
+
             try {
+                // Gọi API Gemini
                 const result = await model.generateContent(prompt);
                 const textResponse = result.response.text();
+
                 // Dọn dẹp văn bản để đảm bảo nó là JSON hợp lệ
                 const cleanedText = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-                const plan = JSON.parse(cleanedText);
-                runAnimation(plan);
+                const plan = JSON.parse(cleanedText); // Phân tích JSON
+
+                runAnimation(plan); // Chạy hoạt ảnh dựa trên kế hoạch
             } catch (error) {
                 console.error("Lỗi phân tích hoặc tạo hoạt ảnh:", error);
-                infoText.innerText = "Đã có lỗi xảy ra. AI có thể đã trả về định dạng không đúng. Vui lòng thử lại.";
+                infoText.innerText = "Đã có lỗi xảy ra. AI có thể đã trả về định dạng không đúng hoặc gặp lỗi. Vui lòng thử lại.";
             } finally {
-                generateBtn.disabled = false;
+                generateBtn.disabled = false; // Kích hoạt lại nút
+                loadingSpinner.classList.add('hidden'); // Ẩn spinner
             }
         }
-        
+
         // --- Event Listeners cho các nút điều khiển mới ---
         playPauseBtn.addEventListener('click', () => {
             if (mainTimeline) {
-                mainTimeline.paused(!mainTimeline.paused());
+                mainTimeline.paused(!mainTimeline.paused()); // Đảo ngược trạng thái tạm dừng
             }
         });
 
         restartBtn.addEventListener('click', () => {
             if (mainTimeline) {
-                mainTimeline.restart();
+                mainTimeline.restart(); // Khởi động lại hoạt ảnh
             }
         });
-        
+
+        // Khởi tạo môi trường 3D khi trang tải xong
         init3D();
+        // Lắng nghe sự kiện click nút "Tạo Phản ứng"
         generateBtn.addEventListener('click', generateReactionPlan);
     </script>
 </body>
