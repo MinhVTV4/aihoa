@@ -922,11 +922,18 @@
             }
         }
 
-        // Modified: Store moleculeDef in group.userData and draw bonds
+        // --- NEW/MODIFIED: drawMolecule3D with improved bond representation ---
         function drawMolecule3D(moleculeDef, x, y, z) {
             const group = new THREE.Group();
             const atomRadius = 0.5;
-            const bondThickness = 0.15; // Increased for better visibility
+            const bondThickness = 0.1; // Thinner for multiple bonds
+            const bondMaterial = new THREE.MeshStandardMaterial({
+                color: 0xcccccc, // Grayish white for bonds
+                metalness: 0.2,
+                roughness: 0.6,
+                transparent: true,
+                opacity: 1
+            });
 
             // Store atom meshes to easily reference their positions for bonds
             const atomMeshes = [];
@@ -946,10 +953,13 @@
                     atomMesh.position.set(0, 0, 0); // Center single atom
                 } else {
                     // Arrange atoms in a rough circular or linear pattern
+                    // Use spherical coordinates for better 3D distribution if possible, or simpler arrangement
                     const angle = (i / moleculeDef.atoms.length) * 2 * Math.PI;
-                    atomMesh.position.x = Math.cos(angle) * atomRadius * 1.8; // Spread out atoms a bit more
-                    atomMesh.position.y = Math.sin(angle) * atomRadius * 1.8;
-                    atomMesh.position.z = (Math.random() - 0.5) * atomRadius * 0.5; // Slight Z variation
+                    const spreadRadius = atomRadius * 1.5; // Distance from center of molecule for atoms
+                    atomMesh.position.x = Math.cos(angle) * spreadRadius;
+                    atomMesh.position.y = Math.sin(angle) * spreadRadius;
+                    // Add slight random Z to avoid perfect 2D planar molecules for all
+                    atomMesh.position.z = (Math.random() - 0.5) * atomRadius * 0.5;
                 }
                 atomMesh.userData.isAtom = true; // Mark as atom for raycasting
                 group.add(atomMesh);
@@ -971,47 +981,56 @@
                         const distance = positionA.distanceTo(positionB);
                         const midPoint = new THREE.Vector3().addVectors(positionA, positionB).divideScalar(2);
 
-                        // Create bond geometry (Cylinder or Box)
-                        let bondGeometry;
-                        let bondOffset = 0; // For double/triple bonds visual separation
+                        // Calculate direction and perpendicular vector for bond offset
+                        const direction = new THREE.Vector3().subVectors(positionB, positionA).normalize();
+                        const perpendicular = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
 
-                        // Basic visualization for bond types
-                        if (bond.bondType === 'double') {
-                             bondGeometry = new THREE.BoxGeometry(bondThickness * 0.7, bondThickness * 0.7, distance);
-                             bondOffset = bondThickness * 0.4;
-                        } else if (bond.bondType === 'triple') {
-                             bondGeometry = new THREE.BoxGeometry(bondThickness * 0.6, bondThickness * 0.6, distance);
-                             bondOffset = bondThickness * 0.6;
-                        } else { // single or default
-                             bondGeometry = new THREE.CylinderGeometry(bondThickness, bondThickness, distance, 8);
+                        // Adjust perpendicular vector if it's too close to zero (collinear)
+                        if (perpendicular.lengthSq() < 0.0001) {
+                            perpendicular.set(1, 0, 0); // Fallback to X-axis if collinear with Y
+                            perpendicular.crossVectors(direction, perpendicular).normalize();
                         }
 
-                        const bondMaterial = new THREE.MeshStandardMaterial({
-                            color: 0xcccccc, // Grayish white for bonds
-                            metalness: 0.2,
-                            roughness: 0.6,
-                            transparent: true,
-                            opacity: 1 // Start fully opaque
-                        });
 
-                        const bondMesh = new THREE.Mesh(bondGeometry, bondMaterial);
+                        let bondSegments = 1;
+                        let offsetDistance = 0; // Distance from center for parallel bonds
 
-                        // Position bond
-                        bondMesh.position.copy(midPoint);
-
-                        // Orient bond to point from A to B
-                        bondMesh.lookAt(positionB);
-                        bondMesh.rotation.x += Math.PI / 2; // Adjust for cylinder's default orientation
-
-                        // Apply offset for multiple bonds if needed (very basic)
-                        if (bondOffset > 0) {
-                            const direction = new THREE.Vector3().subVectors(positionB, positionA).normalize();
-                            const normal = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize(); // Perpendicular vector
-                            bondMesh.position.add(normal.multiplyScalar(bondOffset));
+                        switch (bond.bondType) {
+                            case 'single':
+                                bondSegments = 1;
+                                offsetDistance = 0; // Single bond, no offset
+                                break;
+                            case 'double':
+                                bondSegments = 2;
+                                offsetDistance = bondThickness * 0.5; // Offset for two parallel bonds
+                                break;
+                            case 'triple':
+                                bondSegments = 3;
+                                offsetDistance = bondThickness * 0.7; // Offset for three parallel bonds
+                                break;
+                            default:
+                                bondSegments = 1; // Fallback to single
+                                offsetDistance = 0;
                         }
 
-                        group.add(bondMesh);
-                        bondMeshes.push(bondMesh);
+                        for (let i = 0; i < bondSegments; i++) {
+                            const segmentGeometry = new THREE.CylinderGeometry(bondThickness, bondThickness, distance, 8);
+                            const segmentMesh = new THREE.Mesh(segmentGeometry, bondMaterial.clone()); // Clone material for individual control
+
+                            // Position segment
+                            segmentMesh.position.copy(midPoint);
+                            segmentMesh.lookAt(positionB);
+                            segmentMesh.rotation.x += Math.PI / 2; // Adjust for cylinder's default orientation
+
+                            // Apply offset for parallel bonds
+                            if (bondSegments > 1) {
+                                const currentOffset = (i - (bondSegments - 1) / 2) * offsetDistance;
+                                segmentMesh.position.add(perpendicular.clone().multiplyScalar(currentOffset));
+                            }
+                            
+                            group.add(segmentMesh);
+                            bondMeshes.push(segmentMesh);
+                        }
                     }
                 });
             }
@@ -1488,7 +1507,7 @@
             toggleDragHint(false);
             updateAtomLegend(null);
 
-            // UPDATED PROMPT: Requesting 'bonds' array within molecule objects
+            // PROMPT: Requesting 'bonds' array within molecule objects with atom indices and bond types
             const prompt = `
             Từ các chất tham gia do người dùng cung cấp là: "${userInput}".
             Hãy thực hiện các bước sau một cách tuần tự:
