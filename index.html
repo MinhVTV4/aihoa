@@ -932,7 +932,7 @@
                 metalness: 0.2,
                 roughness: 0.6,
                 transparent: true,
-                opacity: 1
+                opacity: 1 // Bonds start fully opaque by default if no animation applied yet
             });
 
             // Store atom meshes to easily reference their positions for bonds
@@ -1016,6 +1016,7 @@
                         for (let i = 0; i < bondSegments; i++) {
                             const segmentGeometry = new THREE.CylinderGeometry(bondThickness, bondThickness, distance, 8);
                             const segmentMesh = new THREE.Mesh(segmentGeometry, bondMaterial.clone()); // Clone material for individual control
+                            segmentMesh.name = `bond-${bond.atom1Index}-${bond.atom2Index}-${i}`; // Give it a name for debugging
 
                             // Position segment
                             segmentMesh.position.copy(midPoint);
@@ -1380,10 +1381,12 @@
                                 mainTimeline.to(child.material.emissive, { r: 1, g: 1, b: 0.8, duration: 1, ease: "power2.in" }, step.type);
                             }
                         });
-                        // Animate bond opacity to 0
+                        // NEW: Animate bond "snap" and fade out
                         if (m.obj.userData.moleculeData && m.obj.userData.moleculeData.bondMeshes) {
                             m.obj.userData.moleculeData.bondMeshes.forEach(bondMesh => {
-                                mainTimeline.to(bondMesh.material, { opacity: 0, duration: 1, ease: "power1.out" }, step.type);
+                                // Animate scale down, then fade opacity
+                                mainTimeline.to(bondMesh.scale, { x: 0.2, y: 0.2, z: 0.2, duration: 0.3, ease: "power1.in" }, step.type);
+                                mainTimeline.to(bondMesh.material, { opacity: 0, duration: 0.5, ease: "power1.out" }, "<+0.1"); // Start fade slightly after scale starts
                             });
                         }
                         // Animate atoms breaking apart from each other
@@ -1424,13 +1427,25 @@
                     plan.products.forEach(p => {
                         for (let j = 0; j < p.count; j++) {
                             const productObj = drawMolecule3D(p, productX, (j % 2 === 0 ? 1 : -1) * 3, 0);
-                            // Initial state for new products: transparent atoms and bonds
-                            productObj.children.forEach(c => { c.material.transparent = true; c.material.opacity = 0; });
+                            // Initial state for new products: transparent atoms and bonds, bonds start from zero scale
+                            productObj.children.forEach(c => { 
+                                c.material.transparent = true; 
+                                c.material.opacity = 0; 
+                                if (c.name.startsWith('bond-')) { // Check if it's a bond mesh
+                                    c.scale.set(0.001, 0.001, 0.001); // Start bonds very small
+                                }
+                            });
 
-                            // Animate atoms and bonds to full opacity
+                            // Animate atoms and bonds to full opacity and scale (for bonds)
                             mainTimeline.to(productObj.children.map(c => c.material), { opacity: 1, duration: 2 }, step.type + "+=1");
-                            mainTimeline.to(productObj.children.map(c => c.material.emissive), { r: 0, g: 0, b: 0, duration: 2 }, step.type + "+=1"); // Remove glow
+                            mainTimeline.to(productObj.children.filter(c => c.userData.isAtom).map(c => c.material.emissive), { r: 0, g: 0, b: 0, duration: 2 }, step.type + "+=1"); // Remove glow from atoms
 
+                            // NEW: Animate bond scale in
+                            productObj.children.forEach(c => {
+                                if (c.name.startsWith('bond-')) {
+                                    mainTimeline.to(c.scale, { x: 1, y: 1, z: 1, duration: 1.5, ease: "back.out(1.7)" }, step.type + "+=1");
+                                }
+                            });
                             productX += 5;
                         }
                     });
