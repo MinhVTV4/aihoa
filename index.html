@@ -151,7 +151,7 @@
                  <button class="trend-button" data-trend="electronegativity">Độ âm điện</button>
                  <button class="trend-button" data-trend="ionizationEnergy">NL ion hóa</button>
                  <button class="trend-button" data-trend="atomicRadius">Bán kính NT</button>
-                 <button class="trend-button" data-trend="none">Tắt</button>
+                 <button class="trend-button selected" data-trend="none">Tắt</button>
             </div>
             <div class="control-group">
                 <label>Nhiệt độ:</label>
@@ -252,6 +252,7 @@
             const cell = document.createElement('div');
             cell.className = `element-cell ${element.group}`;
             cell.dataset.number = element.number;
+            cell.dataset.group = element.group;
             cell.innerHTML = `<span class="element-number">${element.number}</span><div class="element-symbol">${element.symbol}</div><div class="element-name">${element.name}</div><div class="element-mass">${element.atomic_mass > 0 ? element.atomic_mass.toFixed(3) : ''}</div>`;
             cell.addEventListener('click', () => handleElementClick(element));
             return cell;
@@ -279,10 +280,20 @@
             });
         }
         
-        // --- UI & EVENT HANDLERS ---
+        // --- UI & EVENT HANDLERS (FIXED) ---
         function handleSearch() {
+            // Deactivate any active legend filter
+            if (activeGroupFilter) {
+                document.querySelector('.legend-item.selected')?.classList.remove('selected');
+                activeGroupFilter = null;
+            }
+             // Deactivate any active trend visualization
+            if (activeTrend !== 'none') {
+                activeTrend = 'none';
+                applyTrendVisualization();
+            }
+
             const query = dom.searchInput.value.toLowerCase().trim();
-            clearFilters();
             
             document.querySelectorAll('.element-cell[data-number]').forEach(cell => {
                 if (!query) {
@@ -296,7 +307,14 @@
                 const symbol = element.symbol.toLowerCase();
                 const number = element.number.toString();
 
-                let isMatch = (query.length <= 2) ? (symbol === query || number === query) : name.includes(query);
+                let isMatch;
+                // Smart search: exact match for symbol/number on short query, contains for name on longer query.
+                if (query.length <= 2) {
+                    isMatch = (symbol === query || number === query);
+                } else {
+                    isMatch = name.includes(query);
+                }
+                
                 cell.classList.toggle('dimmed', !isMatch);
             });
         }
@@ -304,13 +322,24 @@
         function handleLegendClick(event) {
             const clickedItem = event.target.closest('.legend-item');
             if (!clickedItem) return;
-            clearFilters(false);
+
+            // Clear search input and trend filter
+            dom.searchInput.value = '';
+             if (activeTrend !== 'none') {
+                activeTrend = 'none';
+                applyTrendVisualization();
+            }
+
             const group = clickedItem.dataset.group;
             
+            // If the same filter is clicked again, toggle it off
             if (activeGroupFilter === group) {
                 activeGroupFilter = null;
                 clickedItem.classList.remove('selected');
             } else {
+                // Remove selection from the old item
+                document.querySelector('.legend-item.selected')?.classList.remove('selected');
+                // Set new filter and add selection
                 activeGroupFilter = group;
                 clickedItem.classList.add('selected');
             }
@@ -320,18 +349,17 @@
         function handleTrendClick(event) {
             const clickedItem = event.target.closest('.trend-button');
             if (!clickedItem) return;
-            clearFilters(false);
+            
+            // Clear other filters
+            dom.searchInput.value = '';
+            if (activeGroupFilter) {
+                 document.querySelector('.legend-item.selected')?.classList.remove('selected');
+                activeGroupFilter = null;
+            }
 
             const trend = clickedItem.dataset.trend;
             activeTrend = trend;
             applyTrendVisualization();
-        }
-
-        function clearFilters(clearAll = true) {
-            if (clearAll) dom.searchInput.value = '';
-            document.querySelector('.legend-item.selected')?.classList.remove('selected');
-            document.querySelectorAll('.element-cell').forEach(cell => cell.classList.remove('dimmed'));
-            activeGroupFilter = null;
         }
 
         function applyGroupFilter() {
@@ -344,7 +372,6 @@
         
         // --- TREND VISUALIZATION ---
         function applyTrendVisualization() {
-            // Update button UI
             document.querySelectorAll('.trend-button').forEach(btn => {
                 btn.classList.toggle('selected', btn.dataset.trend === activeTrend);
             });
@@ -369,18 +396,15 @@
 
                 const value = el[activeTrend];
                 if (value === null) {
-                    cell.classList.add('no-data');
-                    cell.style.backgroundColor = '';
-                    cell.style.borderColor = '';
+                    cell.className = 'element-cell no-data';
                 } else {
-                    cell.classList.remove('no-data');
+                    cell.className = `element-cell ${el.group}`;
                     const color = mapValueToColor(value, minVal, maxVal, gradient[0], gradient[1]);
                     cell.style.backgroundColor = color;
-                    cell.style.borderColor = color; // Make border same as background for solid look
+                    cell.style.borderColor = color;
                 }
             });
 
-            // Update and show legend
             dom.trendLegendContainer.innerHTML = `
                 <span>${minVal}</span>
                 <div class="trend-legend-gradient" style="background: linear-gradient(to right, ${gradient[0]}, ${gradient[1]})"></div>
@@ -393,8 +417,8 @@
              elements.forEach(el => {
                 const cell = document.querySelector(`.element-cell[data-number='${el.number}']`);
                 if (!cell) return;
-                cell.classList.remove('no-data');
-                cell.style.backgroundColor = ''; // Reverts to CSS-defined color
+                cell.className = `element-cell ${el.group}`;
+                cell.style.backgroundColor = '';
                 cell.style.borderColor = '';
             });
         }
@@ -404,11 +428,9 @@
             const hexToRgb = (hex) => hex.match(/\w\w/g).map(c => parseInt(c, 16));
             const [r1, g1, b1] = hexToRgb(color1.substring(1));
             const [r2, g2, b2] = hexToRgb(color2.substring(1));
-
             const r = Math.round(r1 + percent * (r2 - r1));
             const g = Math.round(g1 + percent * (g2 - g1));
             const b = Math.round(b1 + percent * (b2 - b1));
-
             return `rgb(${r},${g},${b})`;
         }
 
