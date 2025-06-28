@@ -3,1824 +3,819 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Hóa - Mô phỏng Phản ứng Hóa học</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Bảng Tuần Hoàn Tương Tác với Gemini AI</title>
+    <!-- Tailwind CSS CDN để tạo kiểu nhanh chóng -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Google Material Icons -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Marked.js CDN để chuyển đổi Markdown sang HTML -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a1a2e;
-            color: #e0e0e0;
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* Prevent body scroll */
+            background-color: #f0f2f5;
+            color: #333;
             display: flex;
             flex-direction: column;
-            height: 100vh;
-        }
-        #app-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-        }
-        #header {
-            background-color: #2a2a3e;
-            padding: 1rem;
-            border-bottom: 1px solid #4a4a6a;
-            text-align: center;
-            position: relative;
-            z-index: 10;
-        }
-        #header h1 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #ffffff;
-            letter-spacing: 0.05em;
-            background: linear-gradient(90deg, #6a82fb, #fc5c7d);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: inline-block;
-        }
-        #main-content {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-        }
-        #reaction-chamber {
-            flex-grow: 1;
-            background-color: #1a1a2e;
-            position: relative;
-            overflow: hidden; /* Ensure 3D content stays within bounds */
-        }
-        #reaction-chamber canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-        #controls {
-            background-color: #2a2a3e;
-            padding: 1rem;
-            border-top: 1px solid #4a4a6a;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            position: relative;
-            z-index: 10;
-        }
-        .input-group, .control-group {
-            display: flex;
-            gap: 0.5rem;
             align-items: center;
-            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            padding: 20px;
+            min-height: 100vh;
         }
-        #equation-input {
-            flex-grow: 1;
-            padding: 0.75rem 1rem;
+        h1, h2 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+        .periodic-table-grid {
+            display: grid;
+            grid-template-columns: repeat(18, minmax(0, 1fr)); /* 18 cột cho bảng tuần hoàn */
+            gap: 4px; /* Khoảng cách giữa các ô */
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        /* Grid riêng cho khối f-block, cũng 18 cột để giữ bố cục */
+        .lanthanides-grid, .actinides-grid {
+            display: grid;
+            grid-template-columns: repeat(18, minmax(0, 1fr));
+            gap: 4px;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-top: 10px;
+        }
+
+        .element-cell {
+            background-color: #e0f2fe; /* Màu nền mặc định cho ô nguyên tố */
+            border: 1px solid #a7d9ff;
             border-radius: 8px;
-            border: 1px solid #4a4a6a;
-            background-color: #3a3a5a;
-            color: #e0e0e0;
-            font-size: 1rem;
-            transition: border-color 0.3s, box-shadow 0.3s;
-            min-width: 200px; /* Ensure input is not too small */
-        }
-        #equation-input:focus {
-            border-color: #8a6bfa;
-            box-shadow: 0 0 0 2px rgba(138, 107, 250, 0.5);
-            outline: none;
-        }
-        #equation-input.input-error {
-            border-color: #ef4444;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5);
-        }
-        #equation-input.input-valid {
-            border-color: #22c55e;
-        }
-        .control-btn, #generate-btn {
-            padding: 0.75rem 1.25rem;
-            border-radius: 8px;
-            border: none;
+            padding: 8px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease-in-out;
+            font-size: 0.75rem; /* Font size nhỏ hơn cho ô */
+            line-height: 1; /* Line height nhỏ hơn */
+            min-height: 50px; /* Chiều cao tối thiểu cho ô */
+            position: relative; /* Dùng cho chú thích số nguyên tử */
+            text-align: center;
+        }
+        .element-cell:hover {
+            background-color: #cce9ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        .element-cell.active {
+            background-color: #007bff;
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+            z-index: 10; /* Đảm bảo ô active nổi lên trên */
+        }
+        .element-number {
+            font-size: 0.6rem;
+            align-self: flex-start;
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            font-weight: 500;
+            color: rgba(0,0,0,0.6); /* Màu xám cho số nguyên tử */
+        }
+        .element-symbol {
+            font-size: 1.2rem; /* Ký hiệu lớn hơn */
+            font-weight: 700;
+            margin-top: 8px; /* Đẩy ký hiệu xuống dưới số nguyên tử */
+            color: #1a202c; /* Màu đậm hơn cho ký hiệu */
+        }
+        .element-name {
+            font-size: 0.65rem;
+            margin-top: 2px;
+            text-align: center;
+            color: #4a5568;
+        }
+
+        /* Styling cho các nhóm nguyên tố (đã cập nhật và đầy đủ hơn) */
+        .alkali-metal { background-color: #ffcdd2; } /* Group 1 (except H) - light red */
+        .alkaline-earth-metal { background-color: #ffe0b2; } /* Group 2 - light orange */
+        .transition-metal { background-color: #e3f2fd; } /* Groups 3-12 - light blue */
+        .post-transition-metal { background-color: #b2dfdb; } /* Al, Ga, In, Sn, Tl, Pb, Bi, Nh, Fl, Mc, Lv - light teal */
+        .metalloid { background-color: #cfd8dc; } /* B, Si, Ge, As, Sb, Te, Po - light gray/blue */
+        .other-nonmetal { background-color: #f0f4c3; } /* H, C, N, O, P, S, Se - light yellow/green */
+        .halogen { background-color: #d1c4e9; } /* Group 17 - light purple */
+        .noble-gas { background-color: #b3e5fc; } /* Group 18 - light sky blue */
+        .lanthanide { background-color: #fff9c4; } /* Lanthanides - pale yellow */
+        .actinide { background-color: #ffccbc; } /* Actinides - light peach */
+        .lanthanide-placeholder, .actinide-placeholder {
+            background-color: #ddd; /* Màu cho ô placeholder */
+            color: #555;
+            font-weight: bold;
+        }
+
+        /* Placeholder rỗng để giữ đúng vị trí */
+        .empty-cell {
+            visibility: hidden; /* Ẩn nhưng vẫn giữ không gian */
+            pointer-events: none; /* Không cho phép tương tác */
+        }
+
+        /* Vùng hiển thị thông tin chi tiết (bottom sheet) */
+        #bottomSheetOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Lớp phủ đen trong suốt */
+            z-index: 1000;
+            display: none; /* Ẩn theo mặc định */
+        }
+
+        #bottomSheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            max-height: 80vh; /* Chiều cao tối đa 80% viewport */
+            background-color: #ffffff;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -8px 20px rgba(0,0,0,0.2);
+            z-index: 1001;
+            transform: translateY(100%); /* Bắt đầu từ ngoài màn hình */
+            transition: transform 0.3s ease-out; /* Hiệu ứng trượt */
+            display: flex;
+            flex-direction: column;
+        }
+
+        #bottomSheet.active {
+            transform: translateY(0); /* Trượt vào màn hình */
+        }
+
+        #bottomSheetContent {
+            padding: 25px;
+            overflow-y: auto; /* Cho phép cuộn nếu nội dung dài */
+            flex-grow: 1; /* Cho phép nội dung chiếm hết không gian còn lại */
+        }
+
+        #bottomSheet .close-button {
+            position: sticky; /* Nút đóng dính ở trên cùng */
+            top: 0;
+            align-self: flex-end;
+            margin-right: 15px;
+            margin-top: 15px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
-            white-space: nowrap; /* Prevent text wrapping */
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            z-index: 1002; /* Đảm bảo nút nằm trên nội dung */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        #generate-btn {
-            background: linear-gradient(90deg, #6a82fb, #fc5c7d);
-            color: #ffffff;
-            box-shadow: 0 4px 10px rgba(106, 130, 251, 0.4);
-        }
-        #generate-btn:hover:not(:disabled) {
-            opacity: 0.9;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(106, 130, 251, 0.6);
-        }
-        #generate-btn:disabled {
-            background: #4a4a6a;
-            cursor: not-allowed;
-            opacity: 0.6;
-            box-shadow: none;
-        }
-        .control-btn {
-            background-color: #4a4a6a;
-            color: #e0e0e0;
-        }
-        .control-btn:hover:not(:disabled) {
-            background-color: #5a5a7a;
-            transform: translateY(-1px);
-        }
-        .control-btn:disabled {
-            background-color: #3a3a5a;
-            color: #888;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        .speed-btn {
-            background-color: #3a3a5a;
-            color: #e0e0e0;
-            padding: 0.5rem 0.75rem;
-            border-radius: 6px;
-            font-size: 0.875rem;
-        }
-        .speed-btn:hover:not(:disabled) {
-            background-color: #5a5a7a;
-        }
-        .speed-btn.active {
-            background-color: #6a82fb;
-            color: #ffffff;
-            font-weight: 600;
+        #bottomSheet .close-button:hover {
+            background-color: #d0d0d0;
         }
 
-        #timeline-slider {
-            flex-grow: 1;
-            -webkit-appearance: none;
-            height: 8px;
-            background: #4a4a6a;
-            border-radius: 5px;
-            outline: none;
-            opacity: 0.7;
-            transition: opacity .2s;
-            cursor: pointer;
+        #bottomSheetContent h3 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #007bff;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e0f2fe;
+            padding-bottom: 10px;
         }
-        #timeline-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #fc5c7d;
-            cursor: pointer;
-            box-shadow: 0 0 5px rgba(252, 92, 125, 0.8);
+        #bottomSheetContent p {
+            margin-bottom: 8px;
+            line-height: 1.5;
+            font-size: 1rem;
         }
-        #timeline-slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #fc5c7d;
-            cursor: pointer;
-            box-shadow: 0 0 5px rgba(252, 92, 125, 0.8);
+        #bottomSheetContent strong {
+            color: #0056b3;
         }
-        #info-text {
-            text-align: center;
-            margin-top: 0.5rem;
-            font-size: 0.9rem;
-            color: #b0b0b0;
-            opacity: 0;
-            transition: opacity 0.3s;
-            min-height: 1.5rem;
-        }
-        #info-text.error-message {
-            color: #ef4444;
+
+        /* Styling cho phản hồi từ AI (sử dụng Markdown-like) */
+        /* Các kiểu này sẽ áp dụng cho HTML được tạo bởi Marked.js */
+        #bottomSheetContent h1, #bottomSheetContent h2, #bottomSheetContent h3, #bottomSheetContent h4, #bottomSheetContent h5, #bottomSheetContent h6 {
+            color: #0056b3;
             font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
         }
-        #loading-spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid #fff;
+        #bottomSheetContent h1 { font-size: 1.8rem; }
+        #bottomSheetContent h2 { font-size: 1.6rem; }
+        #bottomSheetContent h3 { font-size: 1.4rem; }
+        #bottomSheetContent h4 { font-size: 1.2rem; }
+        #bottomSheetContent h5 { font-size: 1.1rem; }
+        #bottomSheetContent h6 { font-size: 1rem; }
+
+        #bottomSheetContent ul {
+            list-style: disc;
+            margin-left: 20px;
+            padding-left: 0;
+            margin-bottom: 10px;
+        }
+        #bottomSheetContent ol {
+            list-style: decimal;
+            margin-left: 20px;
+            padding-left: 0;
+            margin-bottom: 10px;
+        }
+        #bottomSheetContent li {
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+        #bottomSheetContent strong {
+            font-weight: 700;
+        }
+        #bottomSheetContent em {
+            font-style: italic;
+        }
+        #bottomSheetContent code {
+            background-color: #e6fffa; /* Màu nền nhẹ cho inline code */
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            color: #008080;
+        }
+        #bottomSheetContent pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-top: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+        #bottomSheetContent a {
+            color: #007bff;
+            text-decoration: underline;
+        }
+        #bottomSheetContent blockquote {
+            border-left: 4px solid #ccc;
+            padding-left: 15px;
+            margin-left: 0;
+            color: #666;
+            font-style: italic;
+        }
+
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100px;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 123, 255, 0.3);
+            border-left-color: #007bff;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-left: 0.5rem;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .hidden { display: none !important; }
-
-        /* Welcome Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
+        .status-message {
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            color: #555;
+            text-align: center;
             width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
         }
-        .modal-overlay.show {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .modal-content {
-            background: #2a2a3e;
-            border: 1px solid #4a4a6a;
-            padding: 2.5rem;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 600px;
-            text-align: center;
-            position: relative;
-            transform: scale(0.95);
-            transition: transform 0.3s ease;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
-        }
-        .modal-overlay.show .modal-content {
-            transform: scale(1);
-        }
-        .modal-content h2 {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 1rem;
-            background: linear-gradient(90deg, #6a82fb, #fc5c7d);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .modal-content p {
-            font-size: 1.1rem;
-            color: #b0b0b0;
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-        .modal-close-btn {
-            background: linear-gradient(90deg, #6a82fb, #fc5c7d);
-            color: #ffffff;
-            padding: 0.8rem 2rem;
-            border-radius: 8px;
-            border: none;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 10px rgba(106, 130, 251, 0.4);
-        }
-        .modal-close-btn:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(106, 130, 251, 0.6);
-        }
-
-        /* Drag Hint */
-        #drag-hint {
-            position: absolute;
-            bottom: 1rem;
-            right: 1rem;
-            background: rgba(0, 0, 0, 0.6);
-            color: #e0e0e0;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-            z-index: 5;
-        }
-        #drag-hint.show {
-            opacity: 1;
-        }
-
-        /* Molecule Tooltip */
-        #molecule-tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 0.5rem 0.8rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.1s ease-out;
-            z-index: 100;
-            max-width: 200px;
-            line-height: 1.4;
-            text-align: left;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        #molecule-tooltip.show {
-            opacity: 1;
-        }
-
-        /* Suggestions List */
-        #suggestions-list {
-            position: absolute;
-            top: 100%; /* Below the input */
-            left: 0;
-            right: 0;
-            background-color: #3a3a5a;
-            border: 1px solid #4a4a6a;
-            border-radius: 8px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 20;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(-10px);
-            transition: opacity 0.2s ease, transform 0.2s ease;
-        }
-        #suggestions-list.show {
-            opacity: 1;
-            pointer-events: auto;
-            transform: translateY(0);
-        }
-        .suggestion-item {
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            color: #e0e0e0;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .suggestion-item:hover {
-            background-color: #4a4a6a;
-        }
-
-        /* WebGL Error Message */
-        .webgl-error-message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            background-color: rgba(0, 0, 0, 0.8);
-            padding: 2rem;
-            border-radius: 10px;
-            color: #ffcccc;
-            border: 1px solid #ff6b6b;
-            max-width: 90%;
-        }
-        .webgl-error-message h2 {
-            font-size: 1.8rem;
-            margin-bottom: 1rem;
-            color: #ff6b6b;
-        }
-        .webgl-error-message p {
-            font-size: 1.1rem;
-            line-height: 1.5;
-            margin-bottom: 1rem;
-        }
-        .webgl-error-message a {
-            color: #8a6bfa;
-            text-decoration: underline;
-        }
-
-        /* Explanation Mode Modal */
-        #explanation-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1500;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        #explanation-modal-overlay.show {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        #explanation-modal-content {
-            background: #2a2a3e;
-            border: 1px solid #4a4a6a;
-            padding: 2rem;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 700px;
-            text-align: center;
-            transform: scale(0.95);
-            transition: transform 0.3s ease;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
-        }
-        #explanation-modal-overlay.show #explanation-modal-content {
-            transform: scale(1);
-        }
-        #explanation-title {
-            font-size: 1.75rem;
-            font-weight: 600;
-            color: #ffffff;
-            margin-bottom: 1rem;
-            background: linear-gradient(90deg, #6a82fb, #fc5c7d);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        #explanation-text {
-            font-size: 1rem;
-            color: #b0b0b0;
-            margin-bottom: 1.5rem;
-            line-height: 1.6;
-        }
-        #explanation-continue-btn {
-            background: linear-gradient(90deg, #6a82fb, #fc5c7d);
-            color: #ffffff;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            border: none;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        #explanation-continue-btn:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-
-        /* Atom Legend */
-        #atom-legend {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 8px;
-            padding: 0.75rem;
-            z-index: 10;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            max-width: 200px;
-        }
-        #atom-legend-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        #atom-legend-header h3 {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #e0e0e0;
-        }
-        .atom-legend-toggle {
-            transition: transform 0.3s ease;
-        }
-        #atom-legend-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease, opacity 0.3s ease;
-            opacity: 0;
-            padding-top: 0;
-        }
-        #atom-legend-content.expanded {
-            max-height: 300px; /* Sufficient height for content */
-            opacity: 1;
-            padding-top: 0.75rem;
-        }
-        .atom-color-circle {
-            width: 1rem;
-            height: 1rem;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        .atom-legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-            font-size: 0.85rem;
-            color: #c0c0c0;
-        }
-        .atom-legend-item:last-child {
-            margin-bottom: 0;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            #header h1 {
-                font-size: 1.5rem;
-            }
-            .input-group, .control-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            #equation-input {
-                width: 100%;
-            }
-            #generate-btn, .control-btn {
-                width: 100%;
-            }
-            #timeline-slider {
-                width: 100%;
-            }
-            #atom-legend {
-                position: static; /* Stack on mobile */
-                width: auto;
-                max-width: none;
-                margin: 0.5rem;
-            }
-            #controls {
-                padding: 0.75rem;
-            }
-            .speed-buttons {
-                justify-content: center;
-            }
-        }
-        @media (max-width: 480px) {
-            .modal-content {
-                padding: 1.5rem;
-            }
-            .modal-content h2 {
-                font-size: 1.5rem;
-            }
-            .modal-content p {
-                font-size: 0.9rem;
-            }
-            .modal-close-btn {
-                padding: 0.6rem 1.2rem;
-                font-size: 0.9rem;
-            }
-        }
+        .status-message.error-text { color: #dc3545; }
+        .status-message.success-text { color: #28a745; }
+        .status-message.info-text { color: #f59e0b; }
     </style>
 </head>
 <body>
-    <div id="app-container">
-        <header id="header">
-            <h1>AI Hóa - Mô phỏng Phản ứng</h1>
-        </header>
+    <h1>Bảng Tuần Hoàn Nguyên Tố Hóa Học Tương Tác</h1>
+    <p class="status-message" id="statusMessage">Đang khởi tạo...</p>
 
-        <main id="main-content">
-            <div id="reaction-chamber">
-                <!-- 3D Scene will be rendered here -->
-            </div>
-
-            <div id="atom-legend">
-                <div id="atom-legend-header">
-                    <h3>Chú thích Nguyên tử</h3>
-                    <span class="material-icons atom-legend-toggle">expand_less</span>
-                </div>
-                <div id="atom-legend-content">
-                    <!-- Atom legend items will be dynamically inserted here -->
-                </div>
-            </div>
-            
-            <div id="drag-hint" class="hidden">
-                Kéo để xoay camera. Cuộn để phóng to/thu nhỏ.
-            </div>
-
-            <div id="controls">
-                <div class="input-group">
-                    <input type="text" id="equation-input" placeholder="Nhập chất tham gia (ví dụ: H2 + O2)">
-                    <button id="clear-input-btn" class="control-btn hidden" title="Xóa đầu vào">
-                        <span class="material-icons">clear</span>
-                    </button>
-                    <div id="suggestions-list"></div>
-                </div>
-                <div class="control-group">
-                    <button id="generate-btn" class="control-btn">
-                        Tạo Hoạt ảnh
-                        <span id="loading-spinner" class="hidden"></span>
-                    </button>
-                    <button id="play-pause-btn" class="control-btn" disabled>
-                        <span class="material-icons">play_arrow</span>
-                    </button>
-                    <button id="restart-btn" class="control-btn" disabled>
-                        <span class="material-icons">replay</span>
-                    </button>
-                    <input type="range" id="timeline-slider" min="0" max="100" value="0" disabled>
-                </div>
-                <div class="control-group speed-buttons">
-                    <button class="control-btn speed-btn" data-speed="0.5" disabled>0.5x</button>
-                    <button class="control-btn speed-btn active" data-speed="1.0" disabled>1x</button>
-                    <button class="control-btn speed-btn" data-speed="1.5" disabled>1.5x</button>
-                    <button class="control-btn speed-btn" data-speed="2.0" disabled>2x</button>
-                    <button id="explanation-mode-toggle" class="control-btn" disabled>Chế độ Giải thích</button>
-                </div>
-                <div id="info-text"></div>
-            </div>
-        </main>
-
-        <!-- Welcome Modal -->
-        <div id="welcome-modal-overlay" class="modal-overlay">
-            <div class="modal-content">
-                <h2>Chào mừng đến với AI Hóa!</h2>
-                <p>Tôi có thể giúp bạn hình dung các phản ứng hóa học thông qua hoạt ảnh 3D đẹp mắt. Chỉ cần nhập chất tham gia, AI của tôi sẽ dự đoán phản ứng, cân bằng phương trình và tạo ra một mô phỏng trực quan. Hãy cùng khám phá khoa học!</p>
-                <button id="modal-close-btn" class="modal-close-btn">Bắt đầu</button>
-            </div>
+    <div class="container">
+        <div class="periodic-table-grid" id="periodicTable">
+            <!-- Các ô nguyên tố chính sẽ được tạo bởi JavaScript -->
         </div>
 
-        <!-- Explanation Modal -->
-        <div id="explanation-modal-overlay" class="modal-overlay">
-            <div id="explanation-modal-content">
-                <h2 id="explanation-title">Bước 1: Chuẩn bị</h2>
-                <p id="explanation-text">Các phân tử chất phản ứng đang di chuyển ngẫu nhiên trong buồng phản ứng, sẵn sàng tương tác.</p>
-                <button id="explanation-continue-btn" class="modal-close-btn">Tiếp tục</button>
-            </div>
+        <!-- Khoảng cách giữa bảng chính và khối f-block -->
+        <div class="my-6"></div>
+
+        <!-- Khối Lanthanide riêng biệt -->
+        <div class="periodic-table-grid lanthanides-grid" id="lanthanidesBlock">
+            <!-- Lanthanides sẽ được tạo bởi JavaScript -->
         </div>
 
-        <!-- Molecule Tooltip -->
-        <div id="molecule-tooltip"></div>
+        <!-- Khối Actinide riêng biệt -->
+        <div class="periodic-table-grid actinides-grid mt-4" id="actinidesBlock">
+            <!-- Actinides sẽ được tạo bởi JavaScript -->
+        </div>
+
+        <!-- Bottom Sheet Overlay -->
+        <div id="bottomSheetOverlay"></div>
+
+        <!-- Bottom Sheet (hiển thị thông tin chi tiết nguyên tố) -->
+        <div id="bottomSheet">
+            <button class="close-button" id="closeBottomSheet">X</button>
+            <div id="bottomSheetContent">
+                <h3 id="detailElementName">Chọn một nguyên tố để xem chi tiết</h3>
+                <div id="geminiDetailContent">
+                    <p>Nhấp vào một nguyên tố trong bảng tuần hoàn để Gemini AI điền thông tin chi tiết.</p>
+                </div>
+                <div id="geminiLoading" class="loading-spinner hidden">
+                    <div class="spinner"></div>
+                    <p class="ml-4 text-blue-600">Đang hỏi Gemini AI...</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- GSAP Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/MotionPathPlugin.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/EasePack.min.js"></script>
-    
-    <!-- Firebase SDK & Three.js ES Modules -->
+    <!-- Firebase SDKs -->
     <script type="module">
+        // Import các hàm bạn cần từ SDK bạn cần
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
         import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-ai.js";
-        // Correct Three.js and Addons imports for ES Modules
-        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
-        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js';
-        import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/EffectComposer.js';
-        import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/RenderPass.js';
-        import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/UnrealBloomPass.js';
-        import { OutputPass } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/OutputPass.js';
 
-
-        // --- Firebase, AI, 3D Engine Setup ---
-        // Firebase configuration from aihoa2.html
-        const firebaseConfig = { 
-            apiKey: "AIzaSyBVpguEIjTnIVOk1Ld0u-BGC7nM-pSww_o", 
-            authDomain: "aihoa-ac63b.firebaseapp.com", 
-            projectId: "aihoa-ac63b", 
-            storageBucket: "aihoa-ac63b.firebasestorage.app", 
-            messagingSenderId: "241068548961", 
-            appId: "1:241068548961:web:33d4126d020e9372d15b20"
+        // Cấu hình Firebase của ứng dụng web của bạn (từ file gốc bạn cung cấp)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBsTFay_kTVzr2J50pxrAUdiuOBkwNSJHY",
+            authDomain: "aith-c70eb.firebaseapp.com",
+            projectId: "aith-c70eb",
+            storageBucket: "aith-c70eb.firebasestorage.app",
+            messagingSenderId: "556224999133",
+            appId: "1:556224999133:web:a79ae0f22b612dc167b534"
         };
+
+        // Các biến toàn cục từ môi trường Canvas (nếu có, ưu tiên sử dụng)
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app;
+        let auth; // Biến cho Firebase Authentication
         let model;
-        try {
-            // Initialize Firebase app
-            const app = initializeApp(firebaseConfig);
-            // Get AI service with GoogleAIBackend
-            const ai = getAI(app, { backend: new GoogleAIBackend() });
-            // Use gemini-2.5-flash for content generation
-            model = getGenerativeModel(ai, { model: "gemini-2.5-flash" });
-        } catch (e) {
-            console.error("Firebase/AI initialization error:", e);
-            // Display error if AI cannot be initialized
-            displayMessage("Lỗi: Không thể kết nối với AI Engine. Vui lòng kiểm tra console để biết chi tiết.", true);
-            document.getElementById('generate-btn').disabled = true;
+        let userId = null; // ID người dùng (sẽ được lấy sau khi xác thực)
+
+        // Lấy các phần tử DOM
+        const periodicTable = document.getElementById('periodicTable');
+        const lanthanidesBlock = document.getElementById('lanthanidesBlock');
+        const actinidesBlock = document.getElementById('actinidesBlock');
+        const bottomSheetOverlay = document.getElementById('bottomSheetOverlay');
+        const bottomSheet = document.getElementById('bottomSheet');
+        const closeBottomSheetButton = document.getElementById('closeBottomSheet');
+        const detailElementName = document.getElementById('detailElementName');
+        const geminiDetailContent = document.getElementById('geminiDetailContent'); // Đổi tên từ detailContent
+        const geminiLoading = document.getElementById('geminiLoading');
+        const statusMessageElement = document.getElementById('statusMessage');
+
+        // Hàm cập nhật trạng thái hiển thị trên giao diện
+        function updateStatus(type, message) {
+            statusMessageElement.className = `status-message ${type}`;
+            statusMessageElement.innerHTML = message; // Dùng innerHTML để cho phép <br>
         }
 
-        const chamber = document.getElementById('reaction-chamber');
-        let renderer, scene, camera, controls, composer, mainTimeline;
-        let molecules = []; // Stores THREE.Group objects representing molecules
-        let particles;
-        let solutionContainer; // Declare solution container globally
+        // Hàm để hiển thị bottom sheet
+        function showBottomSheet() {
+            bottomSheetOverlay.style.display = 'block';
+            bottomSheet.classList.add('active');
+        }
 
-        // For molecule tooltip
-        const moleculeTooltip = document.getElementById('molecule-tooltip');
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        let hoveredMolecule = null;
+        // Hàm để ẩn bottom sheet
+        function hideBottomSheet() {
+            bottomSheet.classList.remove('active');
+            // Chờ transition hoàn tất trước khi ẩn overlay
+            bottomSheet.addEventListener('transitionend', function handler() {
+                bottomSheetOverlay.style.display = 'none';
+                bottomSheet.removeEventListener('transitionend', handler);
+            });
+        }
 
-        // Data for example reactions
-        const exampleReactions = [
-            {
-                category: "🧪 Phản ứng của axit - bazơ - muối",
-                reactions: [
-                    { name: "HCl + NaOH → NaCl + H₂O", input: "HCl + NaOH" },
-                    { name: "H₂SO₄ + 2NaOH → Na₂SO₄ + 2H₂O", input: "H2SO4 + NaOH" },
-                    { name: "HCl + AgNO₃ → AgCl↓ + HNO₃", input: "HCl + AgNO3" },
-                    { name: "H₂SO₄ + BaCl₂ → BaSO₄↓ + 2HCl", input: "H2SO4 + BaCl2" },
-                    { name: "NaOH + CuSO₄ → Cu(OH)₂↓ + Na₂SO₄", input: "NaOH + CuSO4" },
-                    { name: "Ba(OH)₂ + FeCl₃ → Fe(OH)₃↓ + BaCl₂", input: "Ba(OH)2 + FeCl3" },
-                ]
-            },
-            {
-                category: "🔥 Phản ứng oxi hóa - khử",
-                reactions: [
-                    { name: "Zn + 2HCl → ZnCl₂ + H₂↑", input: "Zn + HCl" },
-                    { name: "Fe + H₂SO₄ → FeSO₄ + H₂↑", input: "Fe + H2SO4" },
-                    { name: "Fe + CuSO₄ → FeSO₄ + Cu↓", input: "Fe + CuSO4" },
-                    { name: "Zn + AgNO₃ → Zn(NO₃)₂ + Ag↓", input: "Zn + AgNO3" },
-                    { name: "CH₄ + 2O₂ → CO₂ + 2H₂O", input: "CH4 + O2" },
-                    { name: "2Mg + O₂ → 2MgO", input: "Mg + O2" },
-                ]
-            },
-            {
-                category: "🧱 Phản ứng phân hủy",
-                reactions: [
-                    { name: "2KClO₃ → 2KCl + 3O₂", input: "KClO3" },
-                    { name: "CaCO₃ → CaO + CO₂", input: "CaCO3" },
-                ]
-            },
-            {
-                category: "🧊 Phản ứng đặc trưng của phi kim",
-                reactions: [
-                    { name: "Fe + S → FeS", input: "Fe + S" },
-                    { name: "2Al + 3Cl₂ → 2AlCl₃", input: "Al + Cl2" },
-                    { name: "H₂ + Cl₂ → 2HCl", input: "H2 + Cl2" },
-                    { name: "N₂ + 3H₂ ⇌ 2NH₃", input: "N2 + H2" },
-                ]
-            },
-            {
-                category: "🧬 Phản ứng hữu cơ cơ bản",
-                reactions: [
-                    { name: "CH₂=CH₂ + Br₂ → CH₂Br–CH₂Br", input: "CH2=CH2 + Br2" },
-                    { name: "CH≡CH + H₂ → CH₂=CH₂", input: "CH=CH + H2" },
-                    { name: "C₂H₆ + O₂ → CO₂ + H₂O", input: "C2H6 + O2" },
-                    { name: "CH₃COOH + O₂ → CO₂ + 2H₂O", input: "CH3COOH + O2" },
-                ]
-            },
-            {
-                category: "🧫 Phản ứng đặc trưng trong nhóm chất",
-                reactions: [
-                    { name: "BaCl₂ + Na₂SO₄ → BaSO₄↓ + 2NaCl", input: "BaCl2 + Na2SO4" },
-                    { name: "AgNO₃ + NaCl → AgCl↓ + NaNO₃", input: "AgNO3 + NaCl" },
-                    { name: "NaHCO₃ + HCl → NaCl + CO₂↑ + H₂O", input: "NaHCO3 + HCl" },
-                ]
-            }
-        ];
+        // Gắn sự kiện cho nút đóng bottom sheet và overlay
+        closeBottomSheetButton.addEventListener('click', hideBottomSheet);
+        bottomSheetOverlay.addEventListener('click', hideBottomSheet); // Đóng khi click ra ngoài overlay
 
-        /**
-         * Initializes the 3D scene, camera, renderer, lights, controls, and particle system.
-         * Handles WebGL error display.
-         */
-        function init3D() {
-            chamber.innerHTML = ''; // Clear old WebGL error content if any
+        // Khởi tạo Firebase và đăng nhập người dùng (ưu tiên custom token, sau đó ẩn danh)
+        async function initializeFirebase() {
             try {
-                // Scene, Camera, Renderer setup
-                scene = new THREE.Scene();
-                camera = new THREE.PerspectiveCamera(75, chamber.clientWidth / chamber.clientHeight, 0.1, 1000);
-                renderer = new THREE.WebGLRenderer({ antialias: true });
-                renderer.setSize(chamber.clientWidth, chamber.clientHeight);
-                renderer.setPixelRatio(window.devicePixelRatio);
-                chamber.appendChild(renderer.domElement);
+                updateStatus('info-text', "Đang khởi tạo Firebase App...");
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app); 
+                
+                let authSuccess = false;
 
-                // Setup Post-processing (Bloom effect) for visual enhancement
-                const renderPass = new RenderPass(scene, camera);
-                const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-                bloomPass.threshold = 0;
-                bloomPass.strength = 1.2;
-                bloomPass.radius = 0.5;
-                const outputPass = new OutputPass();
-
-                composer = new EffectComposer(renderer);
-                composer.addPass(renderPass);
-                composer.addPass(bloomPass);
-                composer.addPass(outputPass);
-
-                // Add lights to the scene
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft ambient light
-                ambientLight.name = "ambientLight";
-                scene.add(ambientLight);
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Directional light for shadows/highlights
-                directionalLight.name = "directionalLight";
-                directionalLight.position.set(5, 10, 7.5);
-                scene.add(directionalLight);
-
-                camera.position.z = 20; // Initial camera position, slightly further out
-
-                // OrbitControls for interactive camera movement
-                controls = new OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true; // Smooth camera movement
-
-                // Add particle system for background ambiance
-                const particleCount = 1000;
-                const positions = new new THREE.Float32BufferAttribute(particleCount * 3, 3).array; // Use BufferAttribute directly
-                const colors = new new THREE.Float32BufferAttribute(particleCount * 3, 3).array; // Use BufferAttribute directly
-                const particleColor = new THREE.Color(0xffffff); // White particles
-                const sphereRadius = 25; // Increased radius
-                for (let i = 0; i < particleCount; i++) {
-                    const u = Math.random();
-                    const v = Math.random();
-                    const theta = 2 * Math.PI * u;
-                    const phi = Math.acos(2 * v - 1);
-                    const x = sphereRadius * Math.sin(phi) * Math.cos(theta);
-                    const y = sphereRadius * Math.sin(phi) * Math.sin(theta);
-                    const z = sphereRadius * Math.cos(phi);
-                    
-                    positions[i * 3] = x;
-                    positions[i * 3 + 1] = y;
-                    positions[i * 3 + 2] = z;
-                    colors[i * 3] = particleColor.r;
-                    colors[i * 3 + 1] = particleColor.g;
-                    colors[i * 3 + 2] = particleColor.b;
-                }
-                const particleGeometry = new THREE.BufferGeometry();
-                particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-                particleGeometry.userData.originalPositions = new Float32Array(positions); // Store original positions
-                const particleMaterial = new THREE.PointsMaterial({
-                    size: 0.1, vertexColors: true, transparent: true,
-                    opacity: 0.5, blending: THREE.AdditiveBlending
-                });
-                particles = new THREE.Points(particleGeometry, particleMaterial);
-                scene.add(particles);
-
-                // Create solution container
-                const solutionGeometry = new THREE.BoxGeometry(12, 12, 12);
-                const solutionMaterial = new THREE.MeshBasicMaterial({
-                    color: 0x000000, transparent: true, opacity: 0.0
-                });
-                solutionContainer = new THREE.Mesh(solutionGeometry, solutionMaterial);
-                solutionContainer.visible = false;
-                scene.add(solutionContainer);
-
-                // Time variable for perpetual motion
-                let time = 0;
-
-                function animate() {
-                    requestAnimationFrame(animate);
-                    time += 0.05; // Increment time for vibration
-                    controls.update();
-
-                    // Perpetual motion logic for "living" molecules
-                    if (mainTimeline && mainTimeline.progress() === 1) {
-                        molecules.forEach(group => {
-                            const data = group.userData.moleculeData;
-                            if (data && data.drift) { 
-                                group.position.add(data.drift);
-
-                                const wrapLimit = 22;
-                                if (group.position.x > wrapLimit) group.position.x = -wrapLimit;
-                                if (group.position.x < -wrapLimit) group.position.x = wrapLimit;
-                                if (group.position.y > 15) group.position.y = -15;
-                                if (group.position.y < -15) group.position.y = 15;
-                                if (group.position.z > wrapLimit) group.position.z = -wrapLimit;
-                                if (group.position.z < -wrapLimit) group.position.z = wrapLimit;
-
-                                group.rotation.x += data.rotationSpeed.x;
-                                group.rotation.y += data.rotationSpeed.y;
-                                group.rotation.z += data.rotationSpeed.z;
-
-                                data.atoms.forEach((atom, i) => {
-                                    const originalPos = data.originalAtomPositions[i];
-                                    const vibrationData = data.vibrationParams[i];
-                                    const vibration = Math.sin(time * vibrationData.speed + vibrationData.phase) * 0.03;
-                                    atom.position.copy(originalPos).addScaledVector(vibrationData.axis, vibration);
-                                });
-                            }
-                        });
+                if (initialAuthToken) {
+                    try {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        userId = auth.currentUser.uid;
+                        console.log("Đã đăng nhập bằng custom token. User ID:", userId);
+                        updateStatus('success-text', "Firebase App đã khởi tạo và người dùng đã đăng nhập.");
+                        authSuccess = true;
+                    } catch (tokenError) {
+                        console.error("Lỗi đăng nhập bằng custom token:", tokenError);
+                        updateStatus('error-text', `Lỗi đăng nhập bằng custom token: ${tokenError.message}.`);
+                        console.log("Thử đăng nhập ẩn danh...");
                     }
-
-
-                    if (particles && particles.visible) {
-                        particles.rotation.y += 0.0005;
-                        particles.rotation.x += 0.0002;
-                    }
-                    composer.render();
-                }
-                animate();
-
-                window.addEventListener('resize', () => {
-                    camera.aspect = chamber.clientWidth / chamber.clientHeight;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(chamber.clientWidth, chamber.clientHeight);
-                    composer.setSize(chamber.clientWidth, chamber.clientHeight);
-                });
-                chamber.addEventListener('mousemove', onChamberMouseMove, false);
-                chamber.addEventListener('mouseleave', () => {
-                    moleculeTooltip.classList.remove('show');
-                    hoveredMolecule = null;
-                });
-
-            } catch (error) {
-                console.error("WebGL initialization error:", error);
-                chamber.innerHTML = `<div class="webgl-error-message"><h2>Lỗi WebGL</h2><p>Trình duyệt của bạn có thể không hỗ trợ hoặc WebGL đang bị tắt.</p><p><a href="https://get.webgl.org/" target="_blank">Kiểm tra trạng thái WebGL của bạn tại đây</a></p></div>`;
-                generateBtn.disabled = true;
-                throw new Error("WebGL init failed");
-            }
-        }
-
-        /**
-         * Handles mouse movement on the reaction chamber for molecule tooltip.
-         * Uses raycasting to detect hovered atoms and display molecule information.
-         * @param {MouseEvent} event - The mousemove event.
-         */
-        function onChamberMouseMove(event) {
-            const rect = chamber.getBoundingClientRect();
-            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-            const allAtomMeshes = molecules.flatMap(molGroup => molGroup.children.filter(c => c.userData.isAtom));
-            const intersects = raycaster.intersectObjects(allAtomMeshes);
-
-            if (intersects.length > 0) {
-                const parentMoleculeGroup = intersects[0].object.parent;
-                if (hoveredMolecule !== parentMoleculeGroup) {
-                    hoveredMolecule = parentMoleculeGroup;
-                    const data = parentMoleculeGroup.userData.moleculeData;
-                    if (data) {
-                        let state;
-                        switch (data.physicalState?.toLowerCase()) {
-                            case 'gas': state = 'Khí'; break;
-                            case 'liquid': state = 'Lỏng'; break;
-                            case 'solid': state = 'Rắn'; break;
-                            case 'aqueous': state = 'Dung dịch'; break;
-                            default: state = data.physicalState;
-                        }
-                        moleculeTooltip.innerHTML = `<strong>${data.molecule}</strong>` +
-                            (data.name ? `<br/>Tên: ${data.name}` : '') +
-                            (data.molecularWeight ? `<br/>KLPT: ${data.molecularWeight.toFixed(3)} g/mol` : '') +
-                            (state ? `<br/>Trạng thái: ${state}` : '');
-                        moleculeTooltip.style.left = `${event.clientX + 10}px`;
-                        moleculeTooltip.style.top = `${event.clientY + 10}px`;
-                        moleculeTooltip.classList.add('show');
-                    } else {
-                        moleculeTooltip.classList.remove('show');
-                    }
-                }
-            } else if (hoveredMolecule) {
-                moleculeTooltip.classList.remove('show');
-                hoveredMolecule = null;
-            }
-        }
-
-        // --- Core Application Logic ---
-        const generateBtn = document.getElementById('generate-btn');
-        const input = document.getElementById('equation-input');
-        const infoText = document.getElementById('info-text');
-        const playPauseBtn = document.getElementById('play-pause-btn');
-        const restartBtn = document.getElementById('restart-btn');
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const speedButtons = document.querySelectorAll('.speed-btn');
-        const timelineSlider = document.getElementById('timeline-slider');
-        const dragHint = document.getElementById('drag-hint');
-        const clearInputBtn = document.getElementById('clear-input-btn');
-        const suggestionsList = document.getElementById('suggestions-list');
-        const welcomeModalOverlay = document.getElementById('welcome-modal-overlay');
-        const modalCloseBtn = document.getElementById('modal-close-btn');
-        const explanationModeToggle = document.getElementById('explanation-mode-toggle');
-        const explanationModalOverlay = document.getElementById('explanation-modal-overlay');
-        const explanationTitle = document.getElementById('explanation-title');
-        const explanationText = document.getElementById('explanation-text');
-        const explanationContinueBtn = document.getElementById('explanation-continue-btn');
-        let isExplanationMode = false;
-        const atomLegendHeader = document.getElementById('atom-legend-header');
-        const atomLegendContent = document.getElementById('atom-legend-content');
-        const atomLegendToggle = atomLegendHeader.querySelector('.atom-legend-toggle');
-        // NEW: Example Modal Elements
-        let examplesBtn, examplesModalOverlay;
-
-
-        const ATOM_COLORS = [
-            { symbol: 'H', color: '#FFFFFF' }, { symbol: 'O', color: '#FF6B6B' }, { symbol: 'C', color: '#333333' },
-            { symbol: 'N', color: '#6B9AFF' }, { symbol: 'Fe', color: '#A19D94' }, { symbol: 'S', color: '#FFF36B' },
-            { symbol: 'Cl', color: '#6BFF8B' }, { symbol: 'Na', color: '#B06BFF' }, { symbol: 'K', color: '#8A2BE2' },
-            { symbol: 'Mg', color: '#BDB76B' }, { symbol: 'Ca', color: '#DDA0DD' }, { symbol: 'Al', color: '#C0C0C0' },
-            { symbol: 'P', color: '#FFA500' }, { symbol: 'Br', color: '#A52A2A' }, { symbol: 'I', color: '#4B0082' },
-            { symbol: 'Ag', color: '#E0E0E0' }, { symbol: 'Zn', color: '#B0C4DE' }, { symbol: 'Cu', color: '#CD7F32' },
-            { symbol: 'Ba', color: '#A9A9A9' }, { symbol: 'F', color: '#8FBC8F' }, { symbol: 'S', color: '#FFD700' },
-            { symbol: 'K', color: '#B22222' } // Adding K for Potassium, S for Sulfur (already exists, but for clarity)
-        ];
-        const COMMON_CHEMICALS = [
-            'H2O', 'CO2', 'O2', 'N2', 'H2', 'CH4', 'C2H5OH', 'NaCl', 'HCl', 'H2SO4',
-            'NaOH', 'KMnO4', 'NH3', 'CaO', 'Fe2O3', 'SO2', 'NO2', 'C6H12O6', 'C12H22O11',
-            'AgNO3', 'BaCl2', 'CuSO4', 'FeCl3', 'KClO3', 'CaCO3', 'CH2=CH2', 'CH=CH',
-            'C2H6', 'CH3COOH', 'Na2SO4', 'NaHCO3' // Adding common chemicals from example reactions
-        ];
-        let currentMessageTimeout;
-
-        function displayMessage(message, isError = false) {
-            if (currentMessageTimeout) clearTimeout(currentMessageTimeout);
-            infoText.textContent = message;
-            infoText.classList.toggle('error-message', isError);
-            gsap.to(infoText, { opacity: 1, duration: 0.3 });
-            if (!isError) {
-                currentMessageTimeout = setTimeout(() => gsap.to(infoText, { opacity: 0, duration: 0.5 }), 5000);
-            }
-        }
-        function toggleDragHint(show) { if (dragHint) dragHint.classList.toggle('show', show); }
-
-        function clearScene() {
-            molecules.forEach(m => {
-                m.traverse(child => {
-                    if (child.isMesh) {
-                        child.geometry.dispose();
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(mat => mat.dispose());
+                } 
+                
+                if (!authSuccess) { 
+                    try {
+                        await signInAnonymously(auth);
+                        userId = auth.currentUser.uid;
+                        console.log("Đã đăng nhập ẩn danh. User ID:", userId);
+                        updateStatus('success-text', "Firebase App đã khởi tạo và người dùng đã đăng nhập.");
+                        authSuccess = true;
+                    } catch (authError) {
+                        if (authError.code === 'auth/admin-restricted-operation') {
+                            console.error("Lỗi xác thực ẩn danh (auth/admin-restricted-operation):", authError);
+                            updateStatus('error-text', `Lỗi: ${authError.message}.<br>Vui lòng kích hoạt 'Đăng nhập ẩn danh' trong cài đặt Firebase Authentication của dự án của bạn (Firebase Console > Authentication > Sign-in method > Anonymous).`);
                         } else {
-                            child.material.dispose();
+                            console.error("Lỗi đăng nhập ẩn danh:", authError);
+                            updateStatus('error-text', `Lỗi đăng nhập: ${authError.message}.`);
                         }
+                        authSuccess = false; 
                     }
-                });
-                scene.remove(m);
-            });
-            scene.children
-                .filter(obj => obj.userData.isEffect || obj.userData.isGasBubble || obj.userData.isPrecipitationParticle)
-                .forEach(obj => {
-                    if (obj.geometry) obj.geometry.dispose();
-                    if (obj.material) obj.material.dispose();
-                    scene.remove(obj);
-                });
-            molecules = [];
-            if (solutionContainer) {
-                solutionContainer.material.color.set(0x000000);
-                solutionContainer.material.opacity = 0.0;
-                solutionContainer.visible = false;
-            }
-        }
-
-        /**
-         * Draws a 3D representation of a molecule.
-         * @param {object} moleculeDef - Definition of the molecule, including atoms and bonds.
-         * @param {number} x - X coordinate for the molecule's position.
-         * @param {number} y - Y coordinate for the molecule's position.
-         * @param {number} z - Z coordinate for the molecule's position.
-         * @returns {THREE.Group} - The THREE.Group object representing the molecule.
-         */
-        function drawMolecule3D(moleculeDef, x, y, z) {
-            const group = new THREE.Group();
-            group.position.set(x, y, z);
-            const atomRadius = 0.5;
-            const bondThickness = 0.1;
-            const atomMeshes = moleculeDef.atoms.map((atomDef, i) => {
-                const geometry = new THREE.SphereGeometry(atomRadius, 32, 32);
-                const material = new THREE.MeshStandardMaterial({
-                    color: new THREE.Color(atomDef.color), metalness: 0.4, roughness: 0.4,
-                    transparent: true, emissive: new THREE.Color(0x000000)
-                });
-                const atomMesh = new THREE.Mesh(geometry, material);
-                if (moleculeDef.atoms.length > 1) {
-                    const angle = (i / moleculeDef.atoms.length) * 2 * Math.PI;
-                    const spreadRadius = atomRadius * 1.5;
-                    atomMesh.position.set(Math.cos(angle) * spreadRadius, Math.sin(angle) * spreadRadius, (Math.random() - 0.5) * atomRadius * 0.5);
-                }
-                atomMesh.userData = { isAtom: true, symbol: atomDef.symbol };
-                group.add(atomMesh);
-                return atomMesh;
-            });
-
-            const bondMeshes = [];
-            // Ensure bonds array exists before iterating
-            if (moleculeDef.bonds && Array.isArray(moleculeDef.bonds)) {
-                moleculeDef.bonds.forEach(bond => {
-                    const atomA = atomMeshes[bond.atom1Index];
-                    const atomB = atomMeshes[bond.atom2Index];
-                    if (atomA && atomB) {
-                        const posA = atomA.position, posB = atomB.position;
-                        const distance = posA.distanceTo(posB);
-                        const midPoint = new THREE.Vector3().addVectors(posA, posB).divideScalar(2);
-                        const direction = new THREE.Vector3().subVectors(posB, posA).normalize();
-                        let perp = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
-                        if (perp.lengthSq() < 1e-4) perp.set(1, 0, 0).crossVectors(direction, perp).normalize();
-                        
-                        let segments = 1, offset = 0;
-                        switch (bond.bondType) {
-                            case 'double': segments = 2; offset = bondThickness * 0.5; break;
-                            case 'triple': segments = 3; offset = bondThickness * 0.7; break;
-                        }
-                        for (let i = 0; i < segments; i++) {
-                            const geom = new THREE.CylinderGeometry(bondThickness, bondThickness, distance, 8);
-                            const mat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.2, roughness: 0.6, transparent: true });
-                            const mesh = new THREE.Mesh(geom, mat);
-                            mesh.position.copy(midPoint);
-                            mesh.lookAt(posB);
-                            mesh.rotation.x += Math.PI / 2;
-                            if (segments > 1) mesh.position.add(perp.clone().multiplyScalar((i - (segments - 1) / 2) * offset));
-                            mesh.userData.isBond = true;
-                            group.add(mesh);
-                            bondMeshes.push(mesh);
-                        }
-                    }
-                });
-            }
-            group.userData.moleculeData = { ...moleculeDef, atoms: atomMeshes, bondMeshes: bondMeshes };
-            scene.add(group);
-            molecules.push(group);
-            return group;
-        }
-
-        /**
-         * Creates and animates gas bubbles.
-         * @param {object} options - Options for gas bubbles (color, count, size, origin).
-         */
-        function createGasBubbles(options) {
-            const defaultColor = '#ADD8E6';
-            const defaultCount = 30;
-            const defaultSize = 0.1;
-            const defaultOrigin = { x: 0, y: -5, z: 0 };
-            const bubbleColor = options.gas_color || defaultColor;
-            const bubbleCount = options.bubble_count || defaultCount;
-            const bubbleSize = options.bubble_size || defaultSize;
-            const originPoint = options.origin_point || defaultOrigin;
-            const bubbleGeometry = new THREE.SphereGeometry(bubbleSize, 16, 16);
-            const bubbleMaterial = new THREE.MeshBasicMaterial({ color: bubbleColor, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
-            for (let i = 0; i < bubbleCount; i++) {
-                const bubble = new THREE.Mesh(bubbleGeometry, bubbleMaterial.clone());
-                bubble.position.set(originPoint.x + (Math.random() - 0.5) * 2, originPoint.y + (Math.random() * 2), originPoint.z + (Math.random() - 0.5) * 2);
-                bubble.userData.isGasBubble = true;
-                scene.add(bubble);
-                gsap.to(bubble.position, {
-                    y: originPoint.y + 15 + Math.random() * 5, x: bubble.position.x + (Math.random() - 0.5) * 3,
-                    duration: 3 + Math.random() * 2, ease: "none",
-                    onComplete: () => gsap.to(bubble.material, { opacity: 0, duration: 0.5, onComplete: () => { bubble.geometry.dispose(); bubble.material.dispose(); scene.remove(bubble); } })
-                });
-            }
-        }
-
-        /**
-         * Creates and animates precipitation particles.
-         * @param {object} options - Options for precipitation (color, density, formation area).
-         */
-        function createPrecipitationParticles(options) {
-            const defaultColor = '#C0C0C0';
-            let particleCount = 200, particleSize = 0.08, startY = 5, endY = -5, spread = 5;
-            const precipitationColor = options.color || defaultColor;
-            const formationArea = options.formation_area || 'bottom';
-            switch (options.density || 'medium') {
-                case 'light': particleCount = 100; particleSize = 0.05; break;
-                case 'heavy': particleCount = 400; particleSize = 0.12; break;
-            }
-            const precipitationGeometry = new THREE.SphereGeometry(particleSize, 8, 8);
-            const precipitationMaterial = new THREE.MeshBasicMaterial({ color: precipitationColor, transparent: true, opacity: 0 });
-            for (let i = 0; i < particleCount; i++) {
-                const particle = new THREE.Mesh(precipitationGeometry, precipitationMaterial.clone());
-                particle.position.set((Math.random() - 0.5) * spread, startY + (Math.random() * 2 - 1) * 2, (Math.random() - 0.5) * spread);
-                particle.userData.isPrecipitationParticle = true;
-                scene.add(particle);
-                const finalY = (formationArea === 'bottom') ? endY + (Math.random() * 2 - 1) * 0.5 : (Math.random() * 2 - 1) * 1;
-                gsap.timeline({ delay: Math.random() * 0.5 })
-                    .to(particle.material, { opacity: 0.8, duration: 1 })
-                    .to(particle.position, { y: finalY, duration: 2 + Math.random() * 2, ease: "power1.inOut" }, "<");
-            }
-        }
-
-        /**
-         * Validates the structure of the reaction plan received from the AI.
-         * @param {object} plan - The reaction plan object.
-         * @returns {boolean} - True if the plan is valid, throws an error otherwise.
-         */
-        function validateReactionPlan(plan) {
-            if (!plan || typeof plan !== 'object') throw new Error("Phản hồi AI không phải là đối tượng hợp lệ.");
-            if (!plan.title || typeof plan.title !== 'string') throw new Error("Thiếu 'title' trong phản hồi AI.");
-            if (!Array.isArray(plan.reactants)) throw new Error("Thiếu 'reactants' trong phản hồi AI.");
-            if (!Array.isArray(plan.products)) throw new Error("Thiếu 'products' trong phản hồi AI.");
-            if (typeof plan.isExothermic !== 'boolean') throw new Error("Thiếu trường 'isExothermic' trong phản hồi AI.");
-            const allSubstances = [...plan.reactants, ...plan.products];
-            for(const sub of allSubstances){
-                if (!Array.isArray(sub.bonds)) throw new Error(`Chất ${sub.molecule} thiếu trường 'bonds' bắt buộc.`);
-            }
-            return true;
-        }
-
-
-        // --- Animation Engine (UPDATED) ---
-        /**
-         * Runs the chemical reaction animation based on the provided plan.
-         * This version implements the "Chemical Supernova" concept.
-         * @param {object} plan - The reaction plan object generated by the AI.
-         */
-        function runAnimation(plan) {
-            if (mainTimeline) mainTimeline.kill();
-            clearScene();
-            
-            if (particles) {
-                particles.visible = true;
-                const positions = particles.geometry.attributes.position.array;
-                const originalPositions = particles.geometry.userData.originalPositions;
-                for (let i = 0; i < originalPositions.length; i++) {
-                    positions[i] = originalPositions[i];
-                }
-                particles.geometry.attributes.position.needsUpdate = true;
-            }
-            toggleDragHint(false);
-            moleculeTooltip.classList.remove('show');
-            hideExplanationModal();
-            displayMessage(`Đang chuẩn bị: ${plan.title}`);
-            updateAtomLegend(plan);
-
-            mainTimeline = gsap.timeline({
-                onUpdate: () => {
-                    timelineSlider.value = mainTimeline.progress() * 100;
-                    if (!isExplanationMode) playPauseBtn.textContent = mainTimeline.paused() ? "▶️" : "⏸️";
-                },
-                onComplete: () => {
-                    displayMessage("Hoạt ảnh hoàn tất!");
-                    playPauseBtn.innerHTML = `<span class="material-icons">replay</span>`; // Change to replay icon
-                    restartBtn.disabled = false;
-                    timelineSlider.disabled = true;
-                    if (particles) particles.visible = true;
-                    toggleDragHint(true);
-                }
-            });
-
-            [playPauseBtn, restartBtn, timelineSlider, explanationModeToggle, ...speedButtons].forEach(el => el.disabled = false);
-            playPauseBtn.innerHTML = `<span class="material-icons">pause</span>`;
-
-            const reactantGroups = [];
-            const baseMultiplier = 2; // For more molecules
-            plan.reactants.forEach(r => {
-                for (let j = 0; j < Math.max(1, r.count) * baseMultiplier; j++) {
-                    const x = (Math.random() - 0.5) * 16 + (j % 2 === 0 ? -4 : 4);
-                    const y = (Math.random() - 0.5) * 8;
-                    const z = (Math.random() - 0.5) * 8;
-                    reactantGroups.push(drawMolecule3D(r, x, y, z));
-                }
-            });
-            
-            plan.animationSteps.forEach((step, stepIndex) => {
-                const stepTimeline = gsap.timeline();
-                step.plan = plan;
-                switch(step.type) {
-                    case 'move_to_center': {
-                        const DURATION = step.duration;
-                        stepTimeline.to(camera.position, { z: 25, duration: DURATION, ease: "power2.inOut"}, 0);
-                        
-                        const ambientLight = scene.getObjectByName("ambientLight");
-                        const directionalLight = scene.getObjectByName("directionalLight");
-                        if(ambientLight) stepTimeline.to(ambientLight, { intensity: 0.1, duration: DURATION * 0.8 }, 0);
-                        if(directionalLight) stepTimeline.to(directionalLight, { intensity: 0.2, duration: DURATION * 0.8 }, 0);
-                        
-                        reactantGroups.forEach(group => {
-                            stepTimeline.to(group.position, {
-                                x: (Math.random() - 0.5) * 6, y: (Math.random() - 0.5) * 6, z: (Math.random() - 0.5) * 6,
-                                duration: DURATION, ease: "power2.inOut"
-                            }, 0);
-                            stepTimeline.to(group.rotation, { x: '+=6', y: '+=6', duration: DURATION, ease: "power1.inOut" }, 0);
-                            stepTimeline.to(group.rotation, { x: '+=0.2', y: '-=0.2', z: '+=0.2', duration: 0.5, ease: `rough({ strength: 2, points: 20 })`, yoyo: true, repeat: 3}, DURATION - 1.5);
-                        });
-                        break;
-                    }
-                    case 'disintegrate': {
-                        const DURATION = step.duration;
-                        stepTimeline.addLabel("disintegration");
-                        reactantGroups.forEach(group => {
-                            const atoms = group.userData.moleculeData.atoms;
-                            const bonds = group.userData.moleculeData.bondMeshes;
-
-                            bonds.forEach(bond => {
-                                stepTimeline.to(bond.scale, { x: 0.1, y: 0.1, z: 0.1, duration: DURATION * 0.5, ease: "power2.in" }, "disintegration");
-                                stepTimeline.to(bond.material, { opacity: 0, duration: DURATION * 0.5 }, "disintegration");
-                            });
-                            
-                            atoms.forEach(atom => {
-                                stepTimeline.to(atom.material.emissive, { r: 0.2, g: 0.2, b: 0.2, duration: DURATION }, "disintegration");
-                                stepTimeline.to(atom.position, {
-                                    x: atom.position.x * 1.5, y: atom.position.y * 1.5, z: atom.position.z * 1.5,
-                                    duration: DURATION, ease: "power1.out"
-                                }, "disintegration");
-                            });
-                        });
-                        break;
-                    }
-                    case 'maelstrom': {
-                        const DURATION = step.duration;
-                        stepTimeline.addLabel("vortex");
-                        const allAtoms = [];
-                        reactantGroups.forEach(group => {
-                            group.userData.moleculeData.atoms.forEach(atom => {
-                                const worldPos = new THREE.Vector3(); atom.getWorldPosition(worldPos);
-                                scene.add(atom); atom.position.copy(worldPos); allAtoms.push(atom);
-                            });
-                            scene.remove(group);
-                        });
-                        reactantGroups.length = 0; // Clear reactant groups as atoms are now individual
-
-                        allAtoms.forEach(atom => {
-                            stepTimeline.to(atom.position, {
-                                x: (Math.random() - 0.5) * 5, y: (Math.random() - 0.5) * 5, z: (Math.random() - 0.5) * 5,
-                                duration: DURATION, ease: "power2.inOut"
-                            }, "vortex");
-                            stepTimeline.to(atom.rotation, { y: "+=10", duration: DURATION }, "vortex");
-                            stepTimeline.to(atom.material.emissive, { r: 0.6, g: 0.6, b: 0.3, duration: DURATION }, "vortex");
-                        });
-                        stepTimeline.to(camera.rotation, { z: '+=0.5', duration: DURATION, ease: "power1.inOut" }, "vortex");
-                        break;
-                    }
-                    case 'supernova': {
-                        const REACTION_CENTER = new THREE.Vector3(0, 0, 0);
-                        const DURATION = step.duration;
-                        stepTimeline.addLabel("detonation", "+=0");
-                        stepTimeline.to(camera.position, { z: 18, duration: DURATION * 0.2, ease: "power3.in" }, "detonation");
-                        
-                        const shake = { strength: 0.3 };
-                        stepTimeline.to(shake, {
-                            strength: 0, duration: 1.2,
-                            onUpdate: () => {
-                                camera.position.x += (Math.random() - 0.5) * shake.strength;
-                                camera.position.y += (Math.random() - 0.5) * shake.strength;
-                            }
-                        }, "detonation");
-
-                        stepTimeline.add(() => {
-                            const coreFlash = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, blending: THREE.AdditiveBlending }));
-                            coreFlash.userData.isEffect = true; scene.add(coreFlash);
-                            gsap.to(coreFlash.scale, { x: 25, y: 25, z: 25, duration: 0.5, ease: "power2.out" });
-                            gsap.to(coreFlash.material, { opacity: 0, duration: 0.7, ease: "power2.out", onComplete: () => { coreFlash.geometry.dispose(); coreFlash.material.dispose(); scene.remove(coreFlash); } });
-                            
-                            const shockwaveColor = plan.isExothermic ? 0xffa500 : 0x87ceeb;
-                            const shockwave = new THREE.Mesh(new THREE.TorusGeometry(1, 0.2, 16, 100), new THREE.MeshBasicMaterial({ color: shockwaveColor, transparent: true, opacity: 0.8 }));
-                            shockwave.rotation.x = Math.PI / 2; shockwave.userData.isEffect = true; scene.add(shockwave);
-                            gsap.to(shockwave.scale, { x: 40, y: 40, z: 40, duration: 2.0, ease: "power1.out" });
-                            gsap.to(shockwave.material, { opacity: 0, duration: 2.0, ease: "power1.out", onComplete: () => { shockwave.geometry.dispose(); shockwave.material.dispose(); scene.remove(shockwave); } });
-                        }, "detonation+=0.05");
-
-                        stepTimeline.addLabel("supernova", "detonation+=0.2");
-                        const detachedAtoms = scene.children.filter(c => c.userData && c.userData.isAtom);
-                        
-                        const ringGeo = new THREE.TorusGeometry(10, 0.15, 16, 100);
-                        const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending });
-                        const energyRing = new THREE.Mesh(ringGeo, ringMat);
-                        energyRing.rotation.x = Math.PI / 2; energyRing.userData.isEffect = true; scene.add(energyRing);
-                        stepTimeline.to(energyRing.scale, { x: 1.5, y: 1.5, z: 1.5, duration: DURATION * 0.9, ease: "power1.out"}, "supernova")
-                        stepTimeline.to(energyRing.material, { opacity: 0.7, duration: 1.5, ease: "power1.out" }, "supernova");
-                        stepTimeline.to(energyRing.rotation, { z: "+=5", duration: DURATION * 0.9 }, "supernova");
-                        stepTimeline.to(energyRing.material, { opacity: 0, duration: 1.5, ease: "power1.in", onComplete: () => { energyRing.geometry.dispose(); energyRing.material.dispose(); scene.remove(energyRing); } }, `supernova+=${DURATION*0.9 - 1.5}`);
-
-                        detachedAtoms.forEach(atom => {
-                            stepTimeline.to(atom.position, {
-                                x: (Math.random() - 0.5) * 25, y: (Math.random() - 0.5) * 25, z: (Math.random() - 0.5) * 25,
-                                duration: DURATION * 0.7, ease: "power2.out"
-                            }, "supernova");
-                            stepTimeline.to(atom.material.emissive, { r: 1.5, g: 1.5, b: 0.8, duration: DURATION * 0.6, ease: "power2.in" }, "supernova");
-                        });
-                        break;
-                    }
-                    case 'reform': {
-                        const DURATION = step.duration;
-                        stepTimeline.addLabel("reformation", "+=0");
-                        const atomPool = {};
-                        scene.children.filter(c => c.userData && c.userData.isAtom).forEach(atom => {
-                            const symbol = atom.userData.symbol;
-                            if (!atomPool[symbol]) atomPool[symbol] = [];
-                            atomPool[symbol].push(atom);
-                        });
-
-                        const totalProductInstances = plan.products.reduce((acc, p) => acc + (p.count * baseMultiplier), 0);
-                        let productIndex = 0;
-
-                        plan.products.forEach(p => {
-                            for (let j = 0; j < Math.max(1, p.count) * baseMultiplier; j++) {
-                                const angle = (productIndex / totalProductInstances) * Math.PI * 4;
-                                const radius = 5 + (productIndex / totalProductInstances) * 10;
-                                const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius, z = (Math.random() - 0.5) * 6;
-                                const productGroup = drawMolecule3D(p, x, y, z);
-                                
-                                productGroup.userData.moleculeData.drift = new THREE.Vector3((Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01);
-                                productGroup.userData.moleculeData.rotationSpeed = new THREE.Vector3((Math.random() - 0.5) * 0.005, (Math.random() - 0.5) * 0.005, (Math.random() - 0.5) * 0.005);
-                                productGroup.userData.moleculeData.originalAtomPositions = productGroup.userData.moleculeData.atoms.map(atom => atom.position.clone());
-                                productGroup.userData.moleculeData.vibrationParams = productGroup.userData.moleculeData.atoms.map(() => ({
-                                    speed: 0.5 + Math.random() * 1.5, phase: Math.random() * Math.PI * 2, axis: new THREE.Vector3().randomDirection()
-                                }));
-
-                                productGroup.traverse(child => { if(child.isMesh) child.material.opacity = 0; });
-                                
-                                productGroup.userData.moleculeData.atoms.forEach(targetAtom => {
-                                    const sourceAtom = atomPool[targetAtom.userData.symbol]?.pop();
-                                    if(sourceAtom){
-                                        const targetWorldPos = new THREE.Vector3(); targetAtom.getWorldPosition(targetWorldPos);
-                                        stepTimeline.to(sourceAtom.position, { x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z, duration: DURATION * 0.4, ease: "power3.inOut" }, "reformation");
-                                        stepTimeline.to(sourceAtom.material, { opacity: 0, duration: DURATION * 0.4 }, "reformation");
-                                        stepTimeline.to(sourceAtom.material.emissive, { r:0, g:0, b:0, duration: DURATION * 0.4 }, "reformation");
-                                        stepTimeline.add(()=> { sourceAtom.geometry.dispose(); sourceAtom.material.dispose(); scene.remove(sourceAtom); }, `reformation+=${DURATION*0.4}`);
-                                    }
-                                });
-
-                                productGroup.traverse(child => { if (child.isMesh) stepTimeline.to(child.material, { opacity: 1, duration: DURATION * 0.3 }, `reformation+=${DURATION*0.1}`); });
-                                productIndex++;
-                            }
-                        });
-                        // Remove any remaining unutilized atoms
-                        Object.values(atomPool).flat().forEach(atom => stepTimeline.to(atom.material, {opacity: 0, duration: 0.5, onComplete: ()=> { atom.geometry.dispose(); atom.material.dispose(); scene.remove(atom); }}, 'reformation'));
-                        break;
-                    }
-                    case 'aftermath': {
-                        const DURATION = step.duration;
-                        stepTimeline.addLabel("breathing", "+=0");
-                        molecules.forEach(group => {
-                            const emissiveTargets = group.userData.moleculeData.atoms.map(a => a.material.emissive);
-                            stepTimeline.to(emissiveTargets, { r: 0.8, g: 0.8, b: 0.4, duration: 1.5, yoyo: true, repeat: 5, ease: "sine.inOut" }, `breathing`);
-                        });
-                        const ambientLight = scene.getObjectByName("ambientLight");
-                        const directionalLight = scene.getObjectByName("directionalLight");
-                        if(ambientLight) stepTimeline.to(ambientLight, { intensity: 0.5, duration: DURATION }, "breathing");
-                        if(directionalLight) stepTimeline.to(directionalLight, { intensity: 1.0, duration: DURATION }, "breathing");
-                        stepTimeline.to(camera.position, { z: 25, duration: DURATION }, "breathing");
-                        break;
-                    }
-                    case 'gas_evolution':
-                        stepTimeline.add(() => createGasBubbles(step.options || {}));
-                        break;
-
-                    case 'precipitation':
-                        stepTimeline.add(() => createPrecipitationParticles(step.options || {}));
-                        break;
                 }
                 
-                mainTimeline.add(stepTimeline);
-                mainTimeline.add(() => {
-                    if (isExplanationMode) {
-                        mainTimeline.pause();
-                        showExplanationModal(step.text || `Bước...`, step.explanation, stepIndex + 1);
-                    } else { displayMessage(step.text || '...'); }
-                }, ">");
-            });
+                if (authSuccess) {
+                    initializeAIModel(); 
+                } else {
+                    updateStatus('error-text', "Không thể xác thực người dùng. AI Model sẽ không được khởi tạo.");
+                    console.error("Authentication failed. AI Model will not be initialized.");
+                }
+
+            } catch (error) {
+                console.error("Lỗi khi khởi tạo Firebase hoặc đăng nhập (chung):", error);
+                updateStatus('error-text', `Lỗi khởi tạo Firebase: ${error.message}.`);
+            }
         }
 
-        /**
-         * Generates the reaction plan by calling the AI model and then runs the animation. (UPDATED)
-         */
-        async function generateReactionPlan() {
-            if (!model || !renderer) {
-                displayMessage("Lỗi: Engine AI hoặc môi trường 3D chưa sẵn sàng.", true);
+        // Khởi tạo AI Model
+        function initializeAIModel() {
+            try {
+                updateStatus('info-text', "Đang khởi tạo AI Model...");
+                const ai = getAI(app, { backend: new GoogleAIBackend() });
+                model = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" }); 
+                console.log("Generative Model instance đã tạo với model 'gemini-1.5-flash-latest'!");
+                updateStatus('success-text', "AI Model đã sẵn sàng. Hãy chọn một nguyên tố!");
+            } catch (e) {
+                console.error("Lỗi khi khởi tạo AI Model:", e);
+                updateStatus('error-text', `Lỗi khởi tạo AI Model: ${e.message}.<br>Hãy đảm bảo Gemini API đã được kích hoạt cho dự án của bạn trong Google Cloud Console.`);
+            }
+        }
+
+        // Dữ liệu đầy đủ của 118 nguyên tố hóa học
+        const elements = [
+            // Period 1 (row 1)
+            { number: 1, symbol: "H", name: "Hydrogen", group: "other-nonmetal", row: 1, col: 1 },
+            { number: 2, symbol: "He", name: "Helium", group: "noble-gas", row: 1, col: 18 },
+            // Period 2 (row 2)
+            { number: 3, symbol: "Li", name: "Lithium", group: "alkali-metal", row: 2, col: 1 },
+            { number: 4, symbol: "Be", name: "Beryllium", group: "alkaline-earth-metal", row: 2, col: 2 },
+            { number: 5, symbol: "B", name: "Boron", group: "metalloid", row: 2, col: 13 },
+            { number: 6, symbol: "C", name: "Carbon", group: "other-nonmetal", row: 2, col: 14 },
+            { number: 7, symbol: "N", name: "Nitrogen", group: "other-nonmetal", row: 2, col: 15 },
+            { number: 8, symbol: "O", name: "Oxygen", group: "other-nonmetal", row: 2, col: 16 },
+            { number: 9, symbol: "F", name: "Fluorine", group: "halogen", row: 2, col: 17 },
+            { number: 10, symbol: "Ne", name: "Neon", group: "noble-gas", row: 2, col: 18 },
+            // Period 3 (row 3)
+            { number: 11, symbol: "Na", name: "Sodium", group: "alkali-metal", row: 3, col: 1 },
+            { number: 12, symbol: "Mg", name: "Magnesium", group: "alkaline-earth-metal", row: 3, col: 2 },
+            { number: 13, symbol: "Al", name: "Aluminum", group: "post-transition-metal", row: 3, col: 13 },
+            { number: 14, symbol: "Si", name: "Silicon", group: "metalloid", row: 3, col: 14 },
+            { number: 15, symbol: "P", name: "Phosphorus", group: "other-nonmetal", row: 3, col: 15 },
+            { number: 16, symbol: "S", name: "Sulfur", group: "other-nonmetal", row: 3, col: 16 },
+            { number: 17, symbol: "Cl", name: "Chlorine", group: "halogen", row: 3, col: 17 },
+            { number: 18, symbol: "Ar", name: "Argon", group: "noble-gas", row: 3, col: 18 },
+            // Period 4 (row 4)
+            { number: 19, symbol: "K", name: "Potassium", group: "alkali-metal", row: 4, col: 1 },
+            { number: 20, symbol: "Ca", name: "Calcium", group: "alkaline-earth-metal", row: 4, col: 2 },
+            { number: 21, symbol: "Sc", name: "Scandium", group: "transition-metal", row: 4, col: 3 },
+            { number: 22, symbol: "Ti", name: "Titanium", group: "transition-metal", row: 4, col: 4 },
+            { number: 23, symbol: "V", name: "Vanadium", group: "transition-metal", row: 4, col: 5 },
+            { number: 24, symbol: "Cr", name: "Chromium", group: "transition-metal", row: 4, col: 6 },
+            { number: 25, symbol: "Mn", name: "Manganese", group: "transition-metal", row: 4, col: 7 },
+            { number: 26, symbol: "Fe", name: "Iron", group: "transition-metal", row: 4, col: 8 },
+            { number: 27, symbol: "Co", name: "Cobalt", group: "transition-metal", row: 4, col: 9 },
+            { number: 28, symbol: "Ni", name: "Nickel", group: "transition-metal", row: 4, col: 10 },
+            { number: 29, symbol: "Cu", name: "Copper", group: "transition-metal", row: 4, col: 11 },
+            { number: 30, symbol: "Zn", name: "Zinc", group: "transition-metal", row: 4, col: 12 },
+            { number: 31, symbol: "Ga", name: "Gallium", group: "post-transition-metal", row: 4, col: 13 },
+            { number: 32, symbol: "Ge", name: "Germanium", group: "metalloid", row: 4, col: 14 },
+            { number: 33, symbol: "As", name: "Arsenic", group: "metalloid", row: 4, col: 15 },
+            { number: 34, symbol: "Se", name: "Selenium", group: "other-nonmetal", row: 4, col: 16 },
+            { number: 35, symbol: "Br", name: "Bromine", group: "halogen", row: 4, col: 17 },
+            { number: 36, symbol: "Kr", name: "Krypton", group: "noble-gas", row: 4, col: 18 },
+            // Period 5 (row 5)
+            { number: 37, symbol: "Rb", name: "Rubidium", group: "alkali-metal", row: 5, col: 1 },
+            { number: 38, symbol: "Sr", name: "Strontium", group: "alkaline-earth-metal", row: 5, col: 2 },
+            { number: 39, symbol: "Y", name: "Yttrium", group: "transition-metal", row: 5, col: 3 },
+            { number: 40, symbol: "Zr", name: "Zirconium", group: "transition-metal", row: 5, col: 4 },
+            { number: 41, symbol: "Nb", name: "Niobium", group: "transition-metal", row: 5, col: 5 },
+            { number: 42, symbol: "Mo", name: "Molybdenum", group: "transition-metal", row: 5, col: 6 },
+            { number: 43, symbol: "Tc", name: "Technetium", group: "transition-metal", row: 5, col: 7 },
+            { number: 44, symbol: "Ru", name: "Ruthenium", group: "transition-metal", row: 5, col: 8 },
+            { number: 45, symbol: "Rh", name: "Rhodium", group: "transition-metal", row: 5, col: 9 },
+            { number: 46, symbol: "Pd", name: "Palladium", group: "transition-metal", row: 5, col: 10 },
+            { number: 47, symbol: "Ag", name: "Silver", group: "transition-metal", row: 5, col: 11 },
+            { number: 48, symbol: "Cd", name: "Cadmium", group: "transition-metal", row: 5, col: 12 },
+            { number: 49, symbol: "In", name: "Indium", group: "post-transition-metal", row: 5, col: 13 },
+            { number: 50, symbol: "Sn", name: "Tin", group: "post-transition-metal", row: 5, col: 14 },
+            { number: 51, symbol: "Sb", name: "Antimony", group: "metalloid", row: 5, col: 15 },
+            { number: 52, symbol: "Te", name: "Tellurium", group: "metalloid", row: 5, col: 16 },
+            { number: 53, symbol: "I", name: "Iodine", group: "halogen", row: 5, col: 17 },
+            { number: 54, symbol: "Xe", name: "Xenon", group: "noble-gas", row: 5, col: 18 },
+            // Period 6 (row 6) - Main table elements
+            { number: 55, symbol: "Cs", name: "Caesium", group: "alkali-metal", row: 6, col: 1 },
+            { number: 56, symbol: "Ba", name: "Barium", group: "alkaline-earth-metal", row: 6, col: 2 },
+            // Placeholder cho Lanthanides trong bảng chính
+            { number: 57, symbol: "57-71", name: "Lanthanides", group: "lanthanide-placeholder", row: 6, col: 3, isPlaceholder: true },
+            { number: 72, symbol: "Hf", name: "Hafnium", group: "transition-metal", row: 6, col: 4 },
+            { number: 73, symbol: "Ta", name: "Tantalum", group: "transition-metal", row: 6, col: 5 },
+            { number: 74, symbol: "W", name: "Tungsten", group: "transition-metal", row: 6, col: 6 },
+            { number: 75, symbol: "Re", name: "Rhenium", group: "transition-metal", row: 6, col: 7 },
+            { number: 76, symbol: "Os", name: "Osmium", group: "transition-metal", row: 6, col: 8 },
+            { number: 77, symbol: "Ir", name: "Iridium", group: "transition-metal", row: 6, col: 9 },
+            { number: 78, symbol: "Pt", name: "Platinum", group: "transition-metal", row: 6, col: 10 },
+            { number: 79, symbol: "Au", name: "Gold", group: "transition-metal", row: 6, col: 11 },
+            { number: 80, symbol: "Hg", name: "Mercury", group: "transition-metal", row: 6, col: 12 },
+            { number: 81, symbol: "Tl", name: "Thallium", group: "post-transition-metal", row: 6, col: 13 },
+            { number: 82, symbol: "Pb", name: "Lead", group: "post-transition-metal", row: 6, col: 14 },
+            { number: 83, symbol: "Bi", name: "Bismuth", group: "post-transition-metal", row: 6, col: 15 },
+            { number: 84, symbol: "Po", name: "Polonium", group: "metalloid", row: 6, col: 16 },
+            { number: 85, symbol: "At", name: "Astatine", group: "halogen", row: 6, col: 17 },
+            { number: 86, symbol: "Rn", name: "Radon", group: "noble-gas", row: 6, col: 18 },
+            // Period 7 (row 7) - Main table elements
+            { number: 87, symbol: "Fr", name: "Francium", group: "alkali-metal", row: 7, col: 1 },
+            { number: 88, symbol: "Ra", name: "Radium", group: "alkaline-earth-metal", row: 7, col: 2 },
+            // Placeholder cho Actinides trong bảng chính
+            { number: 89, symbol: "89-103", name: "Actinides", group: "actinide-placeholder", row: 7, col: 3, isPlaceholder: true },
+            { number: 104, symbol: "Rf", name: "Rutherfordium", group: "transition-metal", row: 7, col: 4 },
+            { number: 105, symbol: "Db", name: "Dubnium", group: "transition-metal", row: 7, col: 5 },
+            { number: 106, symbol: "Sg", name: "Seaborgium", group: "transition-metal", row: 7, col: 6 },
+            { number: 107, symbol: "Bh", name: "Bohrium", group: "transition-metal", row: 7, col: 7 },
+            { number: 108, symbol: "Hs", name: "Hassium", group: "transition-metal", row: 7, col: 8 },
+            { number: 109, symbol: "Mt", name: "Meitnerium", group: "transition-metal", row: 7, col: 9 },
+            { number: 110, symbol: "Ds", name: "Darmstadtium", group: "transition-metal", row: 7, col: 10 },
+            { number: 111, symbol: "Rg", name: "Roentgenium", group: "transition-metal", row: 7, col: 11 },
+            { number: 112, symbol: "Cn", name: "Copernicium", group: "transition-metal", row: 7, col: 12 },
+            { number: 113, symbol: "Nh", name: "Nihonium", group: "post-transition-metal", row: 7, col: 13 },
+            { number: 114, symbol: "Fl", name: "Flerovium", group: "post-transition-metal", row: 7, col: 14 },
+            { number: 115, symbol: "Mc", name: "Moscovium", group: "post-transition-metal", row: 7, col: 15 },
+            { number: 116, symbol: "Lv", name: "Livermorium", group: "post-transition-metal", row: 7, col: 16 },
+            { number: 117, symbol: "Ts", name: "Tennessine", group: "halogen", row: 7, col: 17 },
+            { number: 118, symbol: "Og", name: "Oganesson", group: "noble-gas", row: 7, col: 18 },
+            // Lanthanides (separate block, rendered at row 9, cols 4-18 for visual layout)
+            { number: 57, symbol: "La", name: "Lanthanum", group: "lanthanide", row: 9, col: 4 },
+            { number: 58, symbol: "Ce", name: "Cerium", group: "lanthanide", row: 9, col: 5 },
+            { number: 59, symbol: "Pr", name: "Praseodymium", group: "lanthanide", row: 9, col: 6 },
+            { number: 60, symbol: "Nd", name: "Neodymium", group: "lanthanide", row: 9, col: 7 },
+            { number: 61, symbol: "Pm", name: "Promethium", group: "lanthanide", row: 9, col: 8 },
+            { number: 62, symbol: "Sm", name: "Samarium", group: "lanthanide", row: 9, col: 9 },
+            { number: 63, symbol: "Eu", name: "Europium", group: "lanthanide", row: 9, col: 10 },
+            { number: 64, symbol: "Gd", name: "Gadolinium", group: "lanthanide", row: 9, col: 11 },
+            { number: 65, symbol: "Tb", name: "Terbium", group: "lanthanide", row: 9, col: 12 },
+            { number: 66, symbol: "Dy", name: "Dysprosium", group: "lanthanide", row: 9, col: 13 },
+            { number: 67, symbol: "Ho", name: "Holmium", group: "lanthanide", row: 9, col: 14 },
+            { number: 68, symbol: "Er", name: "Erbium", group: "lanthanide", row: 9, col: 15 },
+            { number: 69, symbol: "Tm", name: "Thulium", group: "lanthanide", row: 9, col: 16 },
+            { number: 70, symbol: "Yb", name: "Ytterbium", group: "lanthanide", row: 9, col: 17 },
+            { number: 71, symbol: "Lu", name: "Lutetium", group: "lanthanide", row: 9, col: 18 },
+            // Actinides (separate block, rendered at row 10, cols 4-18 for visual layout)
+            { number: 89, symbol: "Ac", name: "Actinium", group: "actinide", row: 10, col: 4 },
+            { number: 90, symbol: "Th", name: "Thorium", group: "actinide", row: 10, col: 5 },
+            { number: 91, symbol: "Pa", name: "Protactinium", group: "actinide", row: 10, col: 6 },
+            { number: 92, symbol: "U", name: "Uranium", group: "actinide", row: 10, col: 7 },
+            { number: 93, symbol: "Np", name: "Neptunium", group: "actinide", row: 10, col: 8 },
+            { number: 94, symbol: "Pu", name: "Plutonium", group: "actinide", row: 10, col: 9 },
+            { number: 95, symbol: "Am", name: "Americium", group: "actinide", row: 10, col: 10 },
+            { number: 96, symbol: "Cm", name: "Curium", group: "actinide", row: 10, col: 11 },
+            { number: 97, symbol: "Bk", name: "Berkelium", group: "actinide", row: 10, col: 12 },
+            { number: 98, symbol: "Cf", name: "Californium", group: "actinide", row: 10, col: 13 },
+            { number: 99, symbol: "Es", name: "Einsteinium", group: "actinide", row: 10, col: 14 },
+            { number: 100, symbol: "Fm", name: "Fermium", group: "actinide", row: 10, col: 15 },
+            { number: 101, symbol: "Md", name: "Mendelevium", group: "actinide", row: 10, col: 16 },
+            { number: 102, symbol: "No", name: "Nobelium", group: "actinide", row: 10, col: 17 },
+            { number: 103, symbol: "Lr", name: "Lawrencium", group: "actinide", row: 10, col: 18 }
+        ];
+
+        // Tạo bảng tuần hoàn trên giao diện
+        function createPeriodicTable() {
+            // Xóa nội dung hiện có để tránh lặp lại
+            periodicTable.innerHTML = '';
+            lanthanidesBlock.innerHTML = '';
+            actinidesBlock.innerHTML = '';
+
+            // Tạo một lưới 2D ảo để sắp xếp các nguyên tố vào vị trí chính xác
+            // Hàng tối đa là 7 cho bảng chính, cột tối đa là 18
+            const mainGrid = Array(7).fill(null).map(() => Array(18).fill(null));
+            // Các khối f-block sẽ sử dụng lưới 18 cột để giữ sự đồng bộ và căn chỉnh
+            const lanthanidesSubGrid = Array(1).fill(null).map(() => Array(18).fill(null));
+            const actinidesSubGrid = Array(1).fill(null).map(() => Array(18).fill(null));
+
+            elements.forEach(element => {
+                const cell = document.createElement('div');
+                cell.classList.add('element-cell', element.group);
+                cell.dataset.symbol = element.symbol;
+                cell.dataset.name = element.name;
+                cell.dataset.number = element.number;
+
+                // Nếu là ô giữ chỗ (placeholder) cho nhóm Lanthanides/Actinides
+                if (element.isPlaceholder) {
+                    cell.innerHTML = `
+                        <div class="text-center font-bold text-gray-700 text-sm">${element.symbol}</div>
+                        <div class="text-xs mt-1 text-gray-600">${element.name}</div>
+                    `;
+                    // Đặt ô placeholder vào lưới chính
+                    mainGrid[element.row - 1][element.col - 1] = cell;
+                }
+                // Nếu là nguyên tố thuộc nhóm Lanthanide
+                else if (element.group === 'lanthanide') {
+                    cell.innerHTML = `
+                        <div class="element-number">${element.number}</div>
+                        <div class="element-symbol">${element.symbol}</div>
+                        <div class="element-name">${element.name}</div>
+                    `;
+                    // Đặt vào lưới con của Lanthanide (hàng 0, cột dựa vào 'col' của phần tử)
+                    lanthanidesSubGrid[0][element.col - 1] = cell;
+                    cell.addEventListener('click', () => handleElementClick(element));
+                }
+                // Nếu là nguyên tố thuộc nhóm Actinide
+                else if (element.group === 'actinide') {
+                    cell.innerHTML = `
+                        <div class="element-number">${element.number}</div>
+                        <div class="element-symbol">${element.symbol}</div>
+                        <div class="element-name">${element.name}</div>
+                    `;
+                    // Đặt vào lưới con của Actinide (hàng 0, cột dựa vào 'col' của phần tử)
+                    actinidesSubGrid[0][element.col - 1] = cell;
+                    cell.addEventListener('click', () => handleElementClick(element));
+                }
+                // Các nguyên tố khác thuộc bảng chính
+                else {
+                    cell.innerHTML = `
+                        <div class="element-number">${element.number}</div>
+                        <div class="element-symbol">${element.symbol}</div>
+                        <div class="element-name">${element.name}</div>
+                    `;
+                    // Đặt vào lưới chính
+                    mainGrid[element.row - 1][element.col - 1] = cell;
+                    cell.addEventListener('click', () => handleElementClick(element));
+                }
+            });
+
+            // Render bảng tuần hoàn chính
+            for (let r = 0; r < mainGrid.length; r++) {
+                for (let c = 0; c < mainGrid[r].length; c++) {
+                    if (mainGrid[r][c]) {
+                        periodicTable.appendChild(mainGrid[r][c]);
+                    } else {
+                        // Thêm ô trống nếu không có nguyên tố nào ở vị trí này
+                        const emptyCell = document.createElement('div');
+                        emptyCell.classList.add('empty-cell');
+                        periodicTable.appendChild(emptyCell);
+                    }
+                }
+            }
+
+            // Render khối Lanthanide
+            // Thêm các ô trống đầu tiên để căn chỉnh khối f-block với cột 4 (nhóm 3) của bảng chính
+            for(let i = 0; i < 3; i++) { // 3 ô trống để căn từ cột 1 đến cột 3
+                const empty = document.createElement('div');
+                empty.classList.add('empty-cell');
+                lanthanidesBlock.appendChild(empty);
+            }
+            // Thêm các nguyên tố Lanthanide từ cột 4 đến cột 18
+            for (let c = 3; c < lanthanidesSubGrid[0].length; c++) { // Bắt đầu từ index 3 (cột 4)
+                if (lanthanidesSubGrid[0][c]) {
+                    lanthanidesBlock.appendChild(lanthanidesSubGrid[0][c]);
+                } else {
+                    const emptyCell = document.createElement('div');
+                    emptyCell.classList.add('empty-cell');
+                    lanthanidesBlock.appendChild(emptyCell);
+                }
+            }
+
+            // Render khối Actinide
+            // Thêm các ô trống đầu tiên để căn chỉnh khối f-block với cột 4 (nhóm 3) của bảng chính
+            for(let i = 0; i < 3; i++) { // 3 ô trống để căn từ cột 1 đến cột 3
+                const empty = document.createElement('div');
+                empty.classList.add('empty-cell');
+                actinidesBlock.appendChild(empty);
+            }
+            // Thêm các nguyên tố Actinide từ cột 4 đến cột 18
+            for (let c = 3; c < actinidesSubGrid[0].length; c++) { // Bắt đầu từ index 3 (cột 4)
+                if (actinidesSubGrid[0][c]) {
+                    actinidesBlock.appendChild(actinidesSubGrid[0][c]);
+                } else {
+                    const emptyCell = document.createElement('div');
+                    emptyCell.classList.add('empty-cell');
+                    actinidesBlock.appendChild(emptyCell);
+                }
+            }
+        }
+
+        // Xử lý khi nhấp vào một nguyên tố
+        async function handleElementClick(element) {
+            // Không xử lý click cho các ô placeholder
+            if (element.isPlaceholder) {
                 return;
             }
-            const userInput = input.value.trim();
-            if (!userInput) {
-                displayMessage("Vui lòng nhập các chất tham gia để tạo phản ứng.", true);
-                input.classList.add('input-error');
-                updateAtomLegend(null);
+
+            // Xóa trạng thái active của tất cả các ô
+            document.querySelectorAll('.element-cell').forEach(cell => {
+                cell.classList.remove('active');
+            });
+
+            // Đánh dấu ô hiện tại là active
+            const clickedCell = document.querySelector(`[data-symbol="${element.symbol}"]`);
+            if (clickedCell) {
+                clickedCell.classList.add('active');
+            }
+
+            // Hiển thị bottom sheet và thông tin cơ bản
+            showBottomSheet(); // Hiển thị bottom sheet
+            detailElementName.textContent = `${element.name} (${element.symbol}) - ${element.number}`;
+            geminiDetailContent.innerHTML = `<p><strong>Số nguyên tử:</strong> ${element.number}</p>
+                                        <p><strong>Ký hiệu:</strong> ${element.symbol}</p>
+                                        <p><strong>Tên:</strong> ${element.name}</p>
+                                        <p class="text-gray-500">Đang yêu cầu Gemini AI để có thêm thông tin...</p>`;
+            geminiLoading.classList.remove('hidden'); // Hiện spinner
+
+            if (!model) {
+                geminiDetailContent.innerHTML = `<p class="error">Lỗi: Mô hình AI chưa được khởi tạo. Vui lòng kiểm tra console.</p>`;
+                geminiLoading.classList.add('hidden');
+                updateStatus('error-text', "Mô hình AI chưa sẵn sàng.");
                 return;
             }
-            input.classList.remove('input-error');
-
-            displayMessage('AI đang tư duy... 🧠');
-            [generateBtn, playPauseBtn, restartBtn, timelineSlider, explanationModeToggle, ...speedButtons].forEach(el => el.disabled = true);
-            loadingSpinner.classList.remove('hidden');
-            clearInputBtn.classList.add('hidden');
-            moleculeTooltip.classList.remove('show');
-            hideExplanationModal();
-            if (particles) particles.visible = false;
-            toggleDragHint(false);
-            updateAtomLegend(null);
-
-            // Final, most robust prompt for the AI model
-            const prompt = `
-            Dựa trên các chất tham gia: "${userInput}".
-            Hãy dự đoán sản phẩm hóa học và cân bằng phương trình.
-            Sau đó, tạo một đối tượng JSON tuân thủ cấu trúc sau:
-
-            CẤU TRÚC JSON BẮT BUỘC:
-            - "title": (string) Phương trình hóa học đầy đủ và cân bằng.
-            - "isExothermic": (boolean) Là true nếu phản ứng tỏa nhiệt, false nếu thu nhiệt. Đây là trường BẮT BUỘC.
-            - "reactants": (array) Một mảng các đối tượng chất phản ứng.
-            - "products": (array) Một mảng các đối tượng sản phẩm.
-            
-            QUY TẮC CHO MỖI ĐỐI TƯỢNG CHẤT TRONG "reactants" VÀ "products":
-            Mỗi đối tượng chất phải có các trường sau:
-            - "molecule": (string) Công thức hóa học của chất (ví dụ: "H2O", "C6H12O6").
-            - "name": (string) Tên gọi thông thường của chất (ví dụ: "Nước", "Glucose").
-            - "count": (number) Số mol/hệ số của chất trong phương trình cân bằng.
-            - "molecularWeight": (number) Khối lượng phân tử của chất.
-            - "physicalState": (string) Trạng thái vật lý ("gas", "liquid", "solid", "aqueous").
-            - "atoms": (array) Mảng các đối tượng nguyên tử. Mỗi nguyên tử có:
-                - "symbol": (string) Ký hiệu nguyên tử (ví dụ: "H", "O", "C").
-                - "color": (string) Mã màu Hex của nguyên tử.
-            - "bonds": (array) **QUY TẮC TỐI QUAN TRỌNG**: Mảng các đối tượng liên kết.
-                - Nếu chất có nhiều hơn một nguyên tử, "bonds" phải chứa các đối tượng liên kết:
-                    - "atom1Index": (number) Chỉ số của nguyên tử thứ nhất trong mảng "atoms" (bắt đầu từ 0).
-                    - "atom2Index": (number) Chỉ số của nguyên tử thứ hai trong mảng "atoms" (bắt đầu từ 0).
-                    - "bondType": (string) Loại liên kết ("single", "double", "triple").
-                - Nếu chất chỉ có MỘT nguyên tử (ví dụ: Fe, Na, Cu), "bonds" PHẢI là một mảng rỗng: "bonds": [].
-                - TUYỆT ĐỐI không được bỏ qua trường "bonds" hoặc trả về null cho "bonds".
-
-            Sử dụng các màu sau cho nguyên tử (tùy chỉnh hoặc thêm nếu cần):
-            H: #FFFFFF, O: #FF6B6B, C: #333333, N: #6B9AFF, Fe: #A19D94, S: #FFF36B, Cl: #6BFF8B, Na: #B06BFF, K: #8A2BE2, Mg: #BDB76B, Ca: #DDA0DD, Al: #C0C0C0, P: #FFA500, Br: #A52A2A, I: #4B0082, Ag: #E0E0E0, Zn: #B0C4DE, Cu: #CD7F32, Ba: #A9A9A9, F: #8FBC8F.
-
-            Chỉ trả lời bằng một khối mã JSON hợp lệ duy nhất. Đảm bảo JSON có thể phân tích cú pháp được.
-            `;
 
             try {
-                const result = await model.generateContent(prompt);
-                const textResponse = result.response.text();
-                let plan;
-                try {
-                    // Extract JSON object from the response using regex, in case it's wrapped in text
-                    const jsonMatch = textResponse.match(/{[\s\S]*}/);
-                    if (!jsonMatch) {
-                        throw new Error("Không tìm thấy đối tượng JSON trong phản hồi của AI.");
-                    }
-                    plan = JSON.parse(jsonMatch[0]);
-                    
-                    // Manually add animation steps since we removed it from the prompt for AI simplicity
-                    plan.animationSteps = [
-                        { type: "move_to_center", duration: 3.5, text: "Giai đoạn 1: Tụ Bão", explanation: "Các chất phản ứng được hút vào vùng trung tâm, tích tụ năng lượng và bắt đầu va chạm." },
-                        { type: "disintegrate", duration: 1.5, text: "Giai đoạn 2: Phân rã", explanation: "Liên kết giữa các nguyên tử trong chất phản ứng bị phá vỡ do năng lượng va chạm, giải phóng các nguyên tử tự do." },
-                        { type: "maelstrom", duration: 2.5, text: "Giai đoạn 3: Hỗn Nguyên", explanation: "Các nguyên tử tự do di chuyển hỗn loạn, tạo thành một 'vũng' năng lượng cao sẵn sàng tái cấu trúc." },
-                        { type: "supernova", duration: 2.0, text: "Giai đoạn 4: Kích Nổ", explanation: "Năng lượng tích lũy đạt đỉnh, giải phóng trong một 'vụ nổ' mạnh mẽ, cho phép hình thành liên kết mới." },
-                        { type: "reform", duration: 3.0, text: "Giai đoạn 5: Tái tạo", explanation: "Các nguyên tử va chạm và tạo thành các liên kết mới, sắp xếp lại để hình thành các phân tử sản phẩm." },
-                        { type: "aftermath", duration: 3.0, text: "Giai đoạn 6: Dư Âm", explanation: "Các phân tử sản phẩm đã hình thành ổn định, giải phóng năng lượng dư thừa và di chuyển tự do trong hệ thống." }
-                    ];
-                    
-                    // Automatically detect and add special effect steps
-                    const gasProduct = plan.products.find(p => p.physicalState?.toLowerCase() === 'gas');
-                    // A solid product formed from non-solid reactants
-                    const precipitateProduct = plan.products.find(p => p.physicalState?.toLowerCase() === 'solid' && plan.reactants.every(r => r.physicalState?.toLowerCase() !== 'solid'));
+                // Tạo prompt chi tiết để hỏi Gemini AI
+                const promptText = `Cung cấp thông tin chi tiết về nguyên tố hóa học ${element.name} (ký hiệu ${element.symbol}, số nguyên tử ${element.number}). Vui lòng bao gồm:
+- Tên đầy đủ (full name)
+- Ký hiệu nguyên tử (atomic symbol)
+- Số nguyên tử (atomic number)
+- Khối lượng nguyên tử (atomic mass)
+- Cấu hình electron (electron configuration)
+- Độ âm điện (electronegativity)
+- Trạng thái ở điều kiện tiêu chuẩn (standard state)
+- Điểm nóng chảy (melting point)
+- Điểm sôi (boiling point)
+- Lịch sử phát hiện (discovery history)
+- Ứng dụng phổ biến (common uses)
+Vui lòng trả lời dưới dạng văn bản có cấu trúc với các mục rõ ràng sử dụng định dạng Markdown (ví dụ: ## Tiêu đề, - Danh sách, **in đậm**, *in nghiêng*, \`code\`). Sử dụng ngôn ngữ tiếng Việt.`;
 
-                    if (gasProduct) {
-                        plan.animationSteps.push({ type: 'gas_evolution', text: "Sản phẩm khí được giải phóng dưới dạng bong bóng.", explanation: `${gasProduct.name} (khí) bay lên, tạo thành các bong bóng khí đặc trưng cho phản ứng.`, options: {} });
-                    }
-                    if (precipitateProduct) {
-                        plan.animationSteps.push({ type: 'precipitation', text: "Kết tủa được hình thành.", explanation: `${precipitateProduct.name} (rắn) kết tủa và lắng xuống dưới dung dịch.`, options: { color: precipitateProduct.atoms[0].color } });
-                    }
+                updateStatus('info-text', `Đang hỏi Gemini về ${element.name}...`);
+                const result = await model.generateContent(promptText);
+                const response = result.response;
+                const text = response.text(); // Lấy phản hồi dưới dạng văn bản
 
-                } catch (jsonError) {
-                    console.error("Lỗi parsing JSON:", jsonError, "Phản hồi thô:", textResponse);
-                    throw new Error("Phản hồi của AI không phải là JSON hợp lệ hoặc thiếu dữ liệu.");
-                }
-                validateReactionPlan(plan); // Validate the plan before running animation
-                runAnimation(plan);
+                // Hiển thị thông tin từ Gemini
+                // Sử dụng marked.js để chuyển đổi Markdown sang HTML
+                geminiDetailContent.innerHTML = `
+                    <p><strong>Tên đầy đủ:</strong> ${element.name}</p>
+                    <p><strong>Ký hiệu:</strong> ${element.symbol}</p>
+                    <p><strong>Số nguyên tử:</strong> ${element.number}</p>
+                    <hr class="my-4 border-t border-blue-200">
+                    <h4 class="font-bold text-md mb-2 text-blue-600">Thông tin chi tiết từ Gemini AI:</h4>
+                    <div class="text-gray-700">${marked.parse(text)}</div>
+                `;
+                updateStatus('success-text', `Đã nhận thông tin về ${element.name} từ Gemini.`);
+
             } catch (error) {
-                console.error("Lỗi:", error);
-                displayMessage(`Lỗi: ${error.message}`, true);
-                if (particles) particles.visible = true;
-                toggleDragHint(true);
+                console.error("Lỗi khi gọi Gemini API:", error);
+                geminiDetailContent.innerHTML = `<p class="error">Lỗi khi lấy thông tin từ Gemini AI: ${error.message}.<br>Vui lòng kiểm tra Console (F12) để biết thêm chi tiết.</p>`;
+                updateStatus('error-text', `Lỗi Gemini API: ${error.message}.`);
             } finally {
-                generateBtn.disabled = false;
-                loadingSpinner.classList.add('hidden');
-                if (input.value.length > 0) clearInputBtn.classList.remove('hidden');
+                geminiLoading.classList.add('hidden'); // Ẩn spinner
             }
         }
 
-        // --- UI and Event Listeners ---
-        /** Updates the visual state of the input field (clear button, validation styles). */
-        function updateInputState() {
-            const value = input.value.trim();
-            clearInputBtn.classList.toggle('hidden', value.length === 0);
-            input.classList.remove('input-error', 'input-valid');
-            if (value.length > 0) {
-                if (/^[A-Za-z0-9\s\+->]*$/.test(value)) {
-                    input.classList.add('input-valid');
-                } else {
-                    input.classList.add('input-error');
-                }
-            }
+        // Hàm giúp định dạng phản hồi từ Gemini để dễ đọc hơn
+        // Hàm này giờ đây chỉ là một placeholder, chức năng chính được Marked.js xử lý
+        function formatGeminiResponse(text) {
+            // Marked.js sẽ xử lý việc chuyển đổi Markdown sang HTML.
+            // Chúng ta chỉ cần đảm bảo các thẻ HTML được tạo ra có style phù hợp.
+            return marked.parse(text); // Sử dụng marked.parse() để chuyển đổi Markdown thành HTML
         }
 
-        /** Shows chemical suggestions based on user input. */
-        function showSuggestions(query) {
-            suggestionsList.innerHTML = '';
-            if (query.length < 1) {
-                suggestionsList.classList.remove('show');
-                return;
-            }
-            const filteredSuggestions = COMMON_CHEMICALS.filter(chem => chem.toLowerCase().includes(query.toLowerCase()));
-            if (filteredSuggestions.length > 0) {
-                filteredSuggestions.forEach(suggestion => {
-                    const item = document.createElement('div');
-                    item.classList.add('suggestion-item');
-                    item.textContent = suggestion;
-                    item.addEventListener('click', () => {
-                        input.value = suggestion;
-                        suggestionsList.classList.remove('show');
-                        updateInputState();
-                    });
-                    suggestionsList.appendChild(item);
-                });
-                suggestionsList.classList.add('show');
-            } else {
-                suggestionsList.classList.remove('show');
-            }
-        }
-
-        input.addEventListener('input', () => { updateInputState(); showSuggestions(input.value); });
-        document.addEventListener('click', (e) => { if (!input.contains(e.target) && !suggestionsList.contains(e.target)) suggestionsList.classList.remove('show'); });
-        clearInputBtn.addEventListener('click', () => { input.value = ''; updateInputState(); suggestionsList.classList.remove('show'); displayMessage("Đầu vào đã được xóa."); });
-        playPauseBtn.addEventListener('click', () => {
-            if (mainTimeline) {
-                if (mainTimeline.paused()) {
-                    mainTimeline.resume();
-                    playPauseBtn.innerHTML = `<span class="material-icons">pause</span>`;
-                } else if (mainTimeline.progress() === 1) { // If animation is complete, restart
-                    mainTimeline.restart();
-                    playPauseBtn.innerHTML = `<span class="material-icons">pause</span>`;
-                } else {
-                    mainTimeline.pause();
-                    playPauseBtn.innerHTML = `<span class="material-icons">play_arrow</span>`;
-                }
-                if (isExplanationMode) hideExplanationModal();
-            }
+        // Khởi tạo ứng dụng khi DOM đã tải xong
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFirebase(); // Khởi tạo Firebase và AI model
+            createPeriodicTable(); // Tạo bảng tuần hoàn
         });
-        restartBtn.addEventListener('click', () => { if (mainTimeline) mainTimeline.restart(); hideExplanationModal(); });
-        speedButtons.forEach(button => button.addEventListener('click', (e) => {
-            const speed = parseFloat(e.target.dataset.speed);
-            if (mainTimeline) mainTimeline.timeScale(speed);
-            speedButtons.forEach(btn => btn.classList.remove('active'));
-            e.target.classList.add('active');
-        }));
-        timelineSlider.addEventListener('input', () => { if (mainTimeline) { mainTimeline.progress(timelineSlider.value / 100).pause(); if (isExplanationMode) hideExplanationModal(); } });
-        modalCloseBtn.addEventListener('click', hideWelcomeModal);
-        atomLegendHeader.addEventListener('click', () => {
-            atomLegendContent.classList.toggle('expanded');
-            atomLegendToggle.style.transform = atomLegendContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
-        });
-        explanationModeToggle.addEventListener('click', () => {
-            isExplanationMode = !isExplanationMode;
-            explanationModeToggle.classList.toggle('active', isExplanationMode);
-            displayMessage(`Chế độ Giải thích: ${isExplanationMode ? 'BẬT' : 'TẮT'}`);
-            if (isExplanationMode && mainTimeline && !mainTimeline.isActive()) mainTimeline.restart();
-            else if (!isExplanationMode && mainTimeline && mainTimeline.paused()) { mainTimeline.resume(); hideExplanationModal(); }
-        });
-        explanationContinueBtn.addEventListener('click', () => { if (mainTimeline) { mainTimeline.resume(); hideExplanationModal(); } });
-
-        /** Shows the welcome modal on first visit. */
-        function showWelcomeModal() {
-            const hasVisited = localStorage.getItem('hasVisitedChemicalAIApp');
-            if (!hasVisited) {
-                welcomeModalOverlay.classList.add('show');
-                document.body.style.overflow = 'hidden';
-            } else {
-                initApp();
-            }
-        }
-        /** Hides the welcome modal and initializes the app. */
-        function hideWelcomeModal() {
-            welcomeModalOverlay.classList.remove('show');
-            localStorage.setItem('hasVisitedChemicalAIApp', 'true');
-            document.body.style.overflow = '';
-            initApp();
-        }
-
-        // NEW: Functions for Example Modal
-        /** Creates and appends the examples modal to the DOM. */
-        function createExamplesModal() {
-            const modalStyle = `
-                .examples-modal-overlay {
-                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                    background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);
-                    display: flex; align-items: center; justify-content: center;
-                    z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-                }
-                .examples-modal-overlay.show { opacity: 1; pointer-events: auto; }
-                .examples-modal-content {
-                    background: #2a2a3e; border: 1px solid #4a4a6a;
-                    padding: 2rem; border-radius: 12px;
-                    width: 90%; max-width: 800px; max-height: 80vh;
-                    overflow-y: auto; position: relative;
-                    transform: scale(0.95); transition: transform 0.3s ease;
-                }
-                .examples-modal-overlay.show .examples-modal-content { transform: scale(1); }
-                .examples-modal-close-btn {
-                    position: absolute; top: 1rem; right: 1rem;
-                    background: none; border: none; font-size: 1.5rem;
-                    color: #888; cursor: pointer; transition: color 0.2s;
-                }
-                .examples-modal-close-btn:hover { color: #fff; }
-                .reaction-category { margin-bottom: 1.5rem; }
-                .reaction-category h3 { font-size: 1.1rem; font-weight: 500; color: #a0a0c0; margin-bottom: 0.75rem; border-bottom: 1px solid #4a4a6a; padding-bottom: 0.5rem; }
-                .reaction-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0.75rem; }
-                .reaction-item {
-                    background: #3a3a5a; padding: 0.75rem 1rem; border-radius: 6px;
-                    cursor: pointer; transition: background 0.2s, transform 0.2s;
-                    font-family: 'Courier New', Courier, monospace;
-                    word-break: break-all; /* Ensure long equations wrap */
-                }
-                .reaction-item:hover { background: #4a4a7a; transform: translateY(-2px); }
-            `;
-            const styleSheet = document.createElement("style");
-            styleSheet.type = "text/css";
-            styleSheet.innerText = modalStyle;
-            document.head.appendChild(styleSheet);
-
-            examplesModalOverlay = document.createElement('div');
-            examplesModalOverlay.className = 'examples-modal-overlay';
-            
-            const modalContent = document.createElement('div');
-            modalContent.className = 'examples-modal-content';
-
-            const closeBtn = document.createElement('button');
-            closeBtn.className = 'examples-modal-close-btn';
-            closeBtn.innerHTML = '&times;';
-            closeBtn.onclick = () => examplesModalOverlay.classList.remove('show');
-
-            const title = document.createElement('h2');
-            title.textContent = 'Chọn một phản ứng ví dụ';
-            
-            modalContent.appendChild(closeBtn);
-            modalContent.appendChild(title);
-
-            exampleReactions.forEach(cat => {
-                const categoryDiv = document.createElement('div');
-                categoryDiv.className = 'reaction-category';
-                
-                const categoryTitle = document.createElement('h3');
-                categoryTitle.innerHTML = cat.category;
-                categoryDiv.appendChild(categoryTitle);
-
-                const listDiv = document.createElement('div');
-                listDiv.className = 'reaction-list';
-
-                cat.reactions.forEach(reaction => {
-                    const item = document.createElement('div');
-                    item.className = 'reaction-item';
-                    item.textContent = reaction.name;
-                    item.dataset.input = reaction.input;
-                    item.onclick = (event) => {
-                        input.value = event.currentTarget.dataset.input;
-                        updateInputState();
-                        examplesModalOverlay.classList.remove('show');
-                        displayMessage(`Đã chọn ví dụ: ${event.currentTarget.dataset.input}`);
-                    };
-                    listDiv.appendChild(item);
-                });
-                categoryDiv.appendChild(listDiv);
-                modalContent.appendChild(categoryDiv);
-            });
-
-            examplesModalOverlay.appendChild(modalContent);
-            document.body.appendChild(examplesModalOverlay);
-            
-            examplesModalOverlay.addEventListener('click', (event) => {
-                if (event.target === examplesModalOverlay) {
-                    examplesModalOverlay.classList.remove('show');
-                }
-            });
-        }
-
-        /** Initializes the main application components. */
-        function initApp() {
-            init3D();
-            generateBtn.addEventListener('click', generateReactionPlan);
-            
-            // NEW: Create and setup example button and modal
-            createExamplesModal();
-            examplesBtn = document.createElement('button');
-            examplesBtn.innerHTML = `💡 Ví dụ`;
-            examplesBtn.className = 'control-btn'; // Use same class as others for styling
-            examplesBtn.style.marginLeft = '0.5rem';
-            examplesBtn.onclick = () => examplesModalOverlay.classList.add('show');
-            generateBtn.parentNode.insertBefore(examplesBtn, generateBtn.nextSibling); // Insert next to generate button
-
-
-            displayMessage("Hãy xem AI dự đoán và diễn họa phản ứng hóa học!");
-            toggleDragHint(true);
-            updateAtomLegend(null);
-            updateInputState();
-        }
-
-        /** Shows the explanation modal. */
-        function showExplanationModal(title, content, stepNumber) {
-            explanationTitle.textContent = `Bước ${stepNumber}: ${title}`;
-            explanationText.textContent = content;
-            explanationModalOverlay.classList.add('show');
-            [playPauseBtn, restartBtn, timelineSlider, ...speedButtons, explanationModeToggle].forEach(el => el.disabled = true);
-        }
-
-        /** Hides the explanation modal. */
-        function hideExplanationModal() {
-            explanationModalOverlay.classList.remove('show');
-            // Only re-enable controls if mainTimeline exists and is not currently active (i.e., paused or completed)
-            if (mainTimeline && !mainTimeline.isActive()) return;
-            if(mainTimeline) {
-                [playPauseBtn, restartBtn, timelineSlider, ...speedButtons, explanationModeToggle].forEach(el => el.disabled = false);
-            }
-        }
-
-        /** Updates the atom legend based on the current reaction plan. */
-        function updateAtomLegend(plan) {
-            atomLegendContent.innerHTML = '';
-            let uniqueAtomSymbols = new Set();
-            if (plan) {
-                plan.reactants.forEach(r => r.atoms.forEach(a => uniqueAtomSymbols.add(a.symbol)));
-                plan.products.forEach(p => p.atoms.forEach(a => uniqueAtomSymbols.add(a.symbol)));
-            } else {
-                // Default atoms if no plan is active
-                ['H', 'O', 'C'].forEach(s => uniqueAtomSymbols.add(s));
-            }
-            const atomsToShow = ATOM_COLORS.filter(atom => uniqueAtomSymbols.has(atom.symbol));
-            if (atomsToShow.length === 0) {
-                atomLegendContent.innerHTML = '<span class="text-sm text-gray-400">Không có chú thích.</span>';
-                atomLegendContent.classList.add('expanded');
-            } else {
-                atomsToShow.forEach(atom => {
-                    const item = document.createElement('div');
-                    item.classList.add('atom-legend-item'); // Changed class for styling
-                    item.innerHTML = `<div class="atom-color-circle" style="background-color: ${atom.color};"></div><span>${atom.symbol}</span>`;
-                    atomLegendContent.appendChild(item);
-                });
-                atomLegendContent.classList.add('expanded');
-                atomLegendToggle.style.transform = 'rotate(180deg)';
-            }
-        }
-
-        // Initial load behavior
-        showWelcomeModal();
-        // Ensure legend is collapsed initially on page load
-        atomLegendContent.classList.remove('expanded');
-        atomLegendToggle.style.transform = 'rotate(0deg)';
     </script>
 </body>
 </html>
