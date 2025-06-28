@@ -1282,4 +1282,548 @@
                             atoms.forEach(atom => {
                                 stepTimeline.to(atom.material.emissive, { r: 0.2, g: 0.2, b: 0.2, duration: DURATION }, "disintegration");
                                 stepTimeline.to(atom.position, {
-                                    x: atom.position.
+                                    x: atom.position.x * 1.5, y: atom.position.y * 1.5, z: atom.position.z * 1.5,
+                                    duration: DURATION, ease: "power1.out"
+                                }, "disintegration");
+                            });
+                        });
+                        break;
+                    }
+                    case 'maelstrom': {
+                        const DURATION = step.duration;
+                        stepTimeline.addLabel("vortex");
+                        const allAtoms = [];
+                        reactantGroups.forEach(group => {
+                            group.userData.moleculeData.atoms.forEach(atom => {
+                                const worldPos = new THREE.Vector3(); atom.getWorldPosition(worldPos);
+                                scene.add(atom); atom.position.copy(worldPos); allAtoms.push(atom);
+                            });
+                            scene.remove(group);
+                        });
+                        reactantGroups.length = 0; // Clear reactant groups as atoms are now individual
+
+                        allAtoms.forEach(atom => {
+                            stepTimeline.to(atom.position, {
+                                x: (Math.random() - 0.5) * 5, y: (Math.random() - 0.5) * 5, z: (Math.random() - 0.5) * 5,
+                                duration: DURATION, ease: "power2.inOut"
+                            }, "vortex");
+                            stepTimeline.to(atom.rotation, { y: "+=10", duration: DURATION }, "vortex");
+                            stepTimeline.to(atom.material.emissive, { r: 0.6, g: 0.6, b: 0.3, duration: DURATION }, "vortex");
+                        });
+                        stepTimeline.to(camera.rotation, { z: '+=0.5', duration: DURATION, ease: "power1.inOut" }, "vortex");
+                        break;
+                    }
+                    case 'supernova': {
+                        const REACTION_CENTER = new THREE.Vector3(0, 0, 0);
+                        const DURATION = step.duration;
+                        stepTimeline.addLabel("detonation", "+=0");
+                        stepTimeline.to(camera.position, { z: 18, duration: DURATION * 0.2, ease: "power3.in" }, "detonation");
+                        
+                        const shake = { strength: 0.3 };
+                        stepTimeline.to(shake, {
+                            strength: 0, duration: 1.2,
+                            onUpdate: () => {
+                                camera.position.x += (Math.random() - 0.5) * shake.strength;
+                                camera.position.y += (Math.random() - 0.5) * shake.strength;
+                            }
+                        }, "detonation");
+
+                        stepTimeline.add(() => {
+                            const coreFlash = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, blending: THREE.AdditiveBlending }));
+                            coreFlash.userData.isEffect = true; scene.add(coreFlash);
+                            gsap.to(coreFlash.scale, { x: 25, y: 25, z: 25, duration: 0.5, ease: "power2.out" });
+                            gsap.to(coreFlash.material, { opacity: 0, duration: 0.7, ease: "power2.out", onComplete: () => { coreFlash.geometry.dispose(); coreFlash.material.dispose(); scene.remove(coreFlash); } });
+                            
+                            const shockwaveColor = plan.isExothermic ? 0xffa500 : 0x87ceeb;
+                            const shockwave = new THREE.Mesh(new THREE.TorusGeometry(1, 0.2, 16, 100), new THREE.MeshBasicMaterial({ color: shockwaveColor, transparent: true, opacity: 0.8 }));
+                            shockwave.rotation.x = Math.PI / 2; shockwave.userData.isEffect = true; scene.add(shockwave);
+                            gsap.to(shockwave.scale, { x: 40, y: 40, z: 40, duration: 2.0, ease: "power1.out" });
+                            gsap.to(shockwave.material, { opacity: 0, duration: 2.0, ease: "power1.out", onComplete: () => { shockwave.geometry.dispose(); shockwave.material.dispose(); scene.remove(shockwave); } });
+                        }, "detonation+=0.05");
+
+                        stepTimeline.addLabel("supernova", "detonation+=0.2");
+                        const detachedAtoms = scene.children.filter(c => c.userData && c.userData.isAtom);
+                        
+                        const ringGeo = new THREE.TorusGeometry(10, 0.15, 16, 100);
+                        const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending });
+                        const energyRing = new THREE.Mesh(ringGeo, ringMat);
+                        energyRing.rotation.x = Math.PI / 2; energyRing.userData.isEffect = true; scene.add(energyRing);
+                        stepTimeline.to(energyRing.scale, { x: 1.5, y: 1.5, z: 1.5, duration: DURATION * 0.9, ease: "power1.out"}, "supernova")
+                        stepTimeline.to(energyRing.material, { opacity: 0.7, duration: 1.5, ease: "power1.out" }, "supernova");
+                        stepTimeline.to(energyRing.rotation, { z: "+=5", duration: DURATION * 0.9 }, "supernova");
+                        stepTimeline.to(energyRing.material, { opacity: 0, duration: 1.5, ease: "power1.in", onComplete: () => { energyRing.geometry.dispose(); energyRing.material.dispose(); scene.remove(energyRing); } }, `supernova+=${DURATION*0.9 - 1.5}`);
+
+                        detachedAtoms.forEach(atom => {
+                            stepTimeline.to(atom.position, {
+                                x: (Math.random() - 0.5) * 25, y: (Math.random() - 0.5) * 25, z: (Math.random() - 0.5) * 25,
+                                duration: DURATION * 0.7, ease: "power2.out"
+                            }, "supernova");
+                            stepTimeline.to(atom.material.emissive, { r: 1.5, g: 1.5, b: 0.8, duration: DURATION * 0.6, ease: "power2.in" }, "supernova");
+                        });
+                        break;
+                    }
+                    case 'reform': {
+                        const DURATION = step.duration;
+                        stepTimeline.addLabel("reformation", "+=0");
+                        const atomPool = {};
+                        scene.children.filter(c => c.userData && c.userData.isAtom).forEach(atom => {
+                            const symbol = atom.userData.symbol;
+                            if (!atomPool[symbol]) atomPool[symbol] = [];
+                            atomPool[symbol].push(atom);
+                        });
+
+                        const totalProductInstances = plan.products.reduce((acc, p) => acc + (p.count * baseMultiplier), 0);
+                        let productIndex = 0;
+
+                        plan.products.forEach(p => {
+                            for (let j = 0; j < Math.max(1, p.count) * baseMultiplier; j++) {
+                                const angle = (productIndex / totalProductInstances) * Math.PI * 4;
+                                const radius = 5 + (productIndex / totalProductInstances) * 10;
+                                const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius, z = (Math.random() - 0.5) * 6;
+                                const productGroup = drawMolecule3D(p, x, y, z);
+                                
+                                productGroup.userData.moleculeData.drift = new THREE.Vector3((Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01);
+                                productGroup.userData.moleculeData.rotationSpeed = new THREE.Vector3((Math.random() - 0.5) * 0.005, (Math.random() - 0.5) * 0.005, (Math.random() - 0.5) * 0.005);
+                                productGroup.userData.moleculeData.originalAtomPositions = productGroup.userData.moleculeData.atoms.map(atom => atom.position.clone());
+                                productGroup.userData.moleculeData.vibrationParams = productGroup.userData.moleculeData.atoms.map(() => ({
+                                    speed: 0.5 + Math.random() * 1.5, phase: Math.random() * Math.PI * 2, axis: new THREE.Vector3().randomDirection()
+                                }));
+
+                                productGroup.traverse(child => { if(child.isMesh) child.material.opacity = 0; });
+                                
+                                productGroup.userData.moleculeData.atoms.forEach(targetAtom => {
+                                    const sourceAtom = atomPool[targetAtom.userData.symbol]?.pop();
+                                    if(sourceAtom){
+                                        const targetWorldPos = new THREE.Vector3(); targetAtom.getWorldPosition(targetWorldPos);
+                                        stepTimeline.to(sourceAtom.position, { x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z, duration: DURATION * 0.4, ease: "power3.inOut" }, "reformation");
+                                        stepTimeline.to(sourceAtom.material, { opacity: 0, duration: DURATION * 0.4 }, "reformation");
+                                        stepTimeline.to(sourceAtom.material.emissive, { r:0, g:0, b:0, duration: DURATION * 0.4 }, "reformation");
+                                        stepTimeline.add(()=> { sourceAtom.geometry.dispose(); sourceAtom.material.dispose(); scene.remove(sourceAtom); }, `reformation+=${DURATION*0.4}`);
+                                    }
+                                });
+
+                                productGroup.traverse(child => { if (child.isMesh) stepTimeline.to(child.material, { opacity: 1, duration: DURATION * 0.3 }, `reformation+=${DURATION*0.1}`); });
+                                productIndex++;
+                            }
+                        });
+                        // Remove any remaining unutilized atoms
+                        Object.values(atomPool).flat().forEach(atom => stepTimeline.to(atom.material, {opacity: 0, duration: 0.5, onComplete: ()=> { atom.geometry.dispose(); atom.material.dispose(); scene.remove(atom); }}, 'reformation'));
+                        break;
+                    }
+                    case 'aftermath': {
+                        const DURATION = step.duration;
+                        stepTimeline.addLabel("breathing", "+=0");
+                        molecules.forEach(group => {
+                            const emissiveTargets = group.userData.moleculeData.atoms.map(a => a.material.emissive);
+                            stepTimeline.to(emissiveTargets, { r: 0.8, g: 0.8, b: 0.4, duration: 1.5, yoyo: true, repeat: 5, ease: "sine.inOut" }, `breathing`);
+                        });
+                        const ambientLight = scene.getObjectByName("ambientLight");
+                        const directionalLight = scene.getObjectByName("directionalLight");
+                        if(ambientLight) stepTimeline.to(ambientLight, { intensity: 0.5, duration: DURATION }, "breathing");
+                        if(directionalLight) stepTimeline.to(directionalLight, { intensity: 1.0, duration: DURATION }, "breathing");
+                        stepTimeline.to(camera.position, { z: 25, duration: DURATION }, "breathing");
+                        break;
+                    }
+                    case 'gas_evolution':
+                        stepTimeline.add(() => createGasBubbles(step.options || {}));
+                        break;
+
+                    case 'precipitation':
+                        stepTimeline.add(() => createPrecipitationParticles(step.options || {}));
+                        break;
+                }
+                
+                mainTimeline.add(stepTimeline);
+                mainTimeline.add(() => {
+                    if (isExplanationMode) {
+                        mainTimeline.pause();
+                        showExplanationModal(step.text || `Bước...`, step.explanation, stepIndex + 1);
+                    } else { displayMessage(step.text || '...'); }
+                }, ">");
+            });
+        }
+
+        /**
+         * Generates the reaction plan by calling the AI model and then runs the animation. (UPDATED)
+         */
+        async function generateReactionPlan() {
+            if (!model || !renderer) {
+                displayMessage("Lỗi: Engine AI hoặc môi trường 3D chưa sẵn sàng.", true);
+                return;
+            }
+            const userInput = input.value.trim();
+            if (!userInput) {
+                displayMessage("Vui lòng nhập các chất tham gia để tạo phản ứng.", true);
+                input.classList.add('input-error');
+                updateAtomLegend(null);
+                return;
+            }
+            input.classList.remove('input-error');
+
+            displayMessage('AI đang tư duy... 🧠');
+            [generateBtn, playPauseBtn, restartBtn, timelineSlider, explanationModeToggle, ...speedButtons].forEach(el => el.disabled = true);
+            loadingSpinner.classList.remove('hidden');
+            clearInputBtn.classList.add('hidden');
+            moleculeTooltip.classList.remove('show');
+            hideExplanationModal();
+            if (particles) particles.visible = false;
+            toggleDragHint(false);
+            updateAtomLegend(null);
+
+            // Final, most robust prompt for the AI model
+            const prompt = `
+            Dựa trên các chất tham gia: "${userInput}".
+            Hãy dự đoán sản phẩm hóa học và cân bằng phương trình.
+            Sau đó, tạo một đối tượng JSON tuân thủ cấu trúc sau:
+
+            CẤU TRÚC JSON BẮT BUỘC:
+            - "title": (string) Phương trình hóa học đầy đủ và cân bằng.
+            - "isExothermic": (boolean) Là true nếu phản ứng tỏa nhiệt, false nếu thu nhiệt. Đây là trường BẮT BUỘC.
+            - "reactants": (array) Một mảng các đối tượng chất phản ứng.
+            - "products": (array) Một mảng các đối tượng sản phẩm.
+            
+            QUY TẮC CHO MỖI ĐỐI TƯỢNG CHẤT TRONG "reactants" VÀ "products":
+            Mỗi đối tượng chất phải có các trường sau:
+            - "molecule": (string) Công thức hóa học của chất (ví dụ: "H2O", "C6H12O6").
+            - "name": (string) Tên gọi thông thường của chất (ví dụ: "Nước", "Glucose").
+            - "count": (number) Số mol/hệ số của chất trong phương trình cân bằng.
+            - "molecularWeight": (number) Khối lượng phân tử của chất.
+            - "physicalState": (string) Trạng thái vật lý ("gas", "liquid", "solid", "aqueous").
+            - "atoms": (array) Mảng các đối tượng nguyên tử. Mỗi nguyên tử có:
+                - "symbol": (string) Ký hiệu nguyên tử (ví dụ: "H", "O", "C").
+                - "color": (string) Mã màu Hex của nguyên tử.
+            - "bonds": (array) **QUY TẮC TỐI QUAN TRỌNG**: Mảng các đối tượng liên kết.
+                - Nếu chất có nhiều hơn một nguyên tử, "bonds" phải chứa các đối tượng liên kết:
+                    - "atom1Index": (number) Chỉ số của nguyên tử thứ nhất trong mảng "atoms" (bắt đầu từ 0).
+                    - "atom2Index": (number) Chỉ số của nguyên tử thứ hai trong mảng "atoms" (bắt đầu từ 0).
+                    - "bondType": (string) Loại liên kết ("single", "double", "triple").
+                - Nếu chất chỉ có MỘT nguyên tử (ví dụ: Fe, Na, Cu), "bonds" PHẢI là một mảng rỗng: "bonds": [].
+                - TUYỆT ĐỐI không được bỏ qua trường "bonds" hoặc trả về null cho "bonds".
+
+            Sử dụng các màu sau cho nguyên tử (tùy chỉnh hoặc thêm nếu cần):
+            H: #FFFFFF, O: #FF6B6B, C: #333333, N: #6B9AFF, Fe: #A19D94, S: #FFF36B, Cl: #6BFF8B, Na: #B06BFF, K: #8A2BE2, Mg: #BDB76B, Ca: #DDA0DD, Al: #C0C0C0, P: #FFA500, Br: #A52A2A, I: #4B0082, Ag: #E0E0E0, Zn: #B0C4DE, Cu: #CD7F32, Ba: #A9A9A9, F: #8FBC8F.
+
+            Chỉ trả lời bằng một khối mã JSON hợp lệ duy nhất. Đảm bảo JSON có thể phân tích cú pháp được.
+            `;
+
+            try {
+                const result = await model.generateContent(prompt);
+                const textResponse = result.response.text();
+                let plan;
+                try {
+                    // Extract JSON object from the response using regex, in case it's wrapped in text
+                    const jsonMatch = textResponse.match(/{[\s\S]*}/);
+                    if (!jsonMatch) {
+                        throw new Error("Không tìm thấy đối tượng JSON trong phản hồi của AI.");
+                    }
+                    plan = JSON.parse(jsonMatch[0]);
+                    
+                    // Manually add animation steps since we removed it from the prompt for AI simplicity
+                    plan.animationSteps = [
+                        { type: "move_to_center", duration: 3.5, text: "Giai đoạn 1: Tụ Bão", explanation: "Các chất phản ứng được hút vào vùng trung tâm, tích tụ năng lượng và bắt đầu va chạm." },
+                        { type: "disintegrate", duration: 1.5, text: "Giai đoạn 2: Phân rã", explanation: "Liên kết giữa các nguyên tử trong chất phản ứng bị phá vỡ do năng lượng va chạm, giải phóng các nguyên tử tự do." },
+                        { type: "maelstrom", duration: 2.5, text: "Giai đoạn 3: Hỗn Nguyên", explanation: "Các nguyên tử tự do di chuyển hỗn loạn, tạo thành một 'vũng' năng lượng cao sẵn sàng tái cấu trúc." },
+                        { type: "supernova", duration: 2.0, text: "Giai đoạn 4: Kích Nổ", explanation: "Năng lượng tích lũy đạt đỉnh, giải phóng trong một 'vụ nổ' mạnh mẽ, cho phép hình thành liên kết mới." },
+                        { type: "reform", duration: 3.0, text: "Giai đoạn 5: Tái tạo", explanation: "Các nguyên tử va chạm và tạo thành các liên kết mới, sắp xếp lại để hình thành các phân tử sản phẩm." },
+                        { type: "aftermath", duration: 3.0, text: "Giai đoạn 6: Dư Âm", explanation: "Các phân tử sản phẩm đã hình thành ổn định, giải phóng năng lượng dư thừa và di chuyển tự do trong hệ thống." }
+                    ];
+                    
+                    // Automatically detect and add special effect steps
+                    const gasProduct = plan.products.find(p => p.physicalState?.toLowerCase() === 'gas');
+                    // A solid product formed from non-solid reactants
+                    const precipitateProduct = plan.products.find(p => p.physicalState?.toLowerCase() === 'solid' && plan.reactants.every(r => r.physicalState?.toLowerCase() !== 'solid'));
+
+                    if (gasProduct) {
+                        plan.animationSteps.push({ type: 'gas_evolution', text: "Sản phẩm khí được giải phóng dưới dạng bong bóng.", explanation: `${gasProduct.name} (khí) bay lên, tạo thành các bong bóng khí đặc trưng cho phản ứng.`, options: {} });
+                    }
+                    if (precipitateProduct) {
+                        plan.animationSteps.push({ type: 'precipitation', text: "Kết tủa được hình thành.", explanation: `${precipitateProduct.name} (rắn) kết tủa và lắng xuống dưới dung dịch.`, options: { color: precipitateProduct.atoms[0].color } });
+                    }
+
+                } catch (jsonError) {
+                    console.error("Lỗi parsing JSON:", jsonError, "Phản hồi thô:", textResponse);
+                    throw new Error("Phản hồi của AI không phải là JSON hợp lệ hoặc thiếu dữ liệu.");
+                }
+                validateReactionPlan(plan); // Validate the plan before running animation
+                runAnimation(plan);
+            } catch (error) {
+                console.error("Lỗi:", error);
+                displayMessage(`Lỗi: ${error.message}`, true);
+                if (particles) particles.visible = true;
+                toggleDragHint(true);
+            } finally {
+                generateBtn.disabled = false;
+                loadingSpinner.classList.add('hidden');
+                if (input.value.length > 0) clearInputBtn.classList.remove('hidden');
+            }
+        }
+
+        // --- UI and Event Listeners ---
+        /** Updates the visual state of the input field (clear button, validation styles). */
+        function updateInputState() {
+            const value = input.value.trim();
+            clearInputBtn.classList.toggle('hidden', value.length === 0);
+            input.classList.remove('input-error', 'input-valid');
+            if (value.length > 0) {
+                if (/^[A-Za-z0-9\s\+->]*$/.test(value)) {
+                    input.classList.add('input-valid');
+                } else {
+                    input.classList.add('input-error');
+                }
+            }
+        }
+
+        /** Shows chemical suggestions based on user input. */
+        function showSuggestions(query) {
+            suggestionsList.innerHTML = '';
+            if (query.length < 1) {
+                suggestionsList.classList.remove('show');
+                return;
+            }
+            const filteredSuggestions = COMMON_CHEMICALS.filter(chem => chem.toLowerCase().includes(query.toLowerCase()));
+            if (filteredSuggestions.length > 0) {
+                filteredSuggestions.forEach(suggestion => {
+                    const item = document.createElement('div');
+                    item.classList.add('suggestion-item');
+                    item.textContent = suggestion;
+                    item.addEventListener('click', () => {
+                        input.value = suggestion;
+                        suggestionsList.classList.remove('show');
+                        updateInputState();
+                    });
+                    suggestionsList.appendChild(item);
+                });
+                suggestionsList.classList.add('show');
+            } else {
+                suggestionsList.classList.remove('show');
+            }
+        }
+
+        input.addEventListener('input', () => { updateInputState(); showSuggestions(input.value); });
+        document.addEventListener('click', (e) => { if (!input.contains(e.target) && !suggestionsList.contains(e.target)) suggestionsList.classList.remove('show'); });
+        clearInputBtn.addEventListener('click', () => { input.value = ''; updateInputState(); suggestionsList.classList.remove('show'); displayMessage("Đầu vào đã được xóa."); });
+        playPauseBtn.addEventListener('click', () => {
+            if (mainTimeline) {
+                if (mainTimeline.paused()) {
+                    mainTimeline.resume();
+                    playPauseBtn.innerHTML = `<span class="material-icons">pause</span>`;
+                } else if (mainTimeline.progress() === 1) { // If animation is complete, restart
+                    mainTimeline.restart();
+                    playPauseBtn.innerHTML = `<span class="material-icons">pause</span>`;
+                } else {
+                    mainTimeline.pause();
+                    playPauseBtn.innerHTML = `<span class="material-icons">play_arrow</span>`;
+                }
+                if (isExplanationMode) hideExplanationModal();
+            }
+        });
+        restartBtn.addEventListener('click', () => { if (mainTimeline) mainTimeline.restart(); hideExplanationModal(); });
+        speedButtons.forEach(button => button.addEventListener('click', (e) => {
+            const speed = parseFloat(e.target.dataset.speed);
+            if (mainTimeline) mainTimeline.timeScale(speed);
+            speedButtons.forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+        }));
+        timelineSlider.addEventListener('input', () => { if (mainTimeline) { mainTimeline.progress(timelineSlider.value / 100).pause(); if (isExplanationMode) hideExplanationModal(); } });
+        modalCloseBtn.addEventListener('click', hideWelcomeModal);
+        atomLegendHeader.addEventListener('click', () => {
+            atomLegendContent.classList.toggle('expanded');
+            atomLegendToggle.style.transform = atomLegendContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+        explanationModeToggle.addEventListener('click', () => {
+            isExplanationMode = !isExplanationMode;
+            explanationModeToggle.classList.toggle('active', isExplanationMode);
+            displayMessage(`Chế độ Giải thích: ${isExplanationMode ? 'BẬT' : 'TẮT'}`);
+            if (isExplanationMode && mainTimeline && !mainTimeline.isActive()) mainTimeline.restart();
+            else if (!isExplanationMode && mainTimeline && mainTimeline.paused()) { mainTimeline.resume(); hideExplanationModal(); }
+        });
+        explanationContinueBtn.addEventListener('click', () => { if (mainTimeline) { mainTimeline.resume(); hideExplanationModal(); } });
+
+        /** Shows the welcome modal on first visit. */
+        function showWelcomeModal() {
+            const hasVisited = localStorage.getItem('hasVisitedChemicalAIApp');
+            if (!hasVisited) {
+                welcomeModalOverlay.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            } else {
+                initApp();
+            }
+        }
+        /** Hides the welcome modal and initializes the app. */
+        function hideWelcomeModal() {
+            welcomeModalOverlay.classList.remove('show');
+            localStorage.setItem('hasVisitedChemicalAIApp', 'true');
+            document.body.style.overflow = '';
+            initApp();
+        }
+
+        // NEW: Functions for Example Modal
+        /** Creates and appends the examples modal to the DOM. */
+        function createExamplesModal() {
+            const modalStyle = `
+                .examples-modal-overlay {
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);
+                    display: flex; align-items: center; justify-content: center;
+                    z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+                }
+                .examples-modal-overlay.show { opacity: 1; pointer-events: auto; }
+                .examples-modal-content {
+                    background: #2a2a3e; border: 1px solid #4a4a6a;
+                    padding: 2rem; border-radius: 12px;
+                    width: 90%; max-width: 800px; max-height: 80vh;
+                    overflow-y: auto; position: relative;
+                    transform: scale(0.95); transition: transform 0.3s ease;
+                }
+                .examples-modal-overlay.show .examples-modal-content { transform: scale(1); }
+                .examples-modal-close-btn {
+                    position: absolute; top: 1rem; right: 1rem;
+                    background: none; border: none; font-size: 1.5rem;
+                    color: #888; cursor: pointer; transition: color 0.2s;
+                }
+                .examples-modal-close-btn:hover { color: #fff; }
+                .reaction-category { margin-bottom: 1.5rem; }
+                .reaction-category h3 { font-size: 1.1rem; font-weight: 500; color: #a0a0c0; margin-bottom: 0.75rem; border-bottom: 1px solid #4a4a6a; padding-bottom: 0.5rem; }
+                .reaction-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0.75rem; }
+                .reaction-item {
+                    background: #3a3a5a; padding: 0.75rem 1rem; border-radius: 6px;
+                    cursor: pointer; transition: background 0.2s, transform 0.2s;
+                    font-family: 'Courier New', Courier, monospace;
+                    word-break: break-all; /* Ensure long equations wrap */
+                }
+                .reaction-item:hover { background: #4a4a7a; transform: translateY(-2px); }
+            `;
+            const styleSheet = document.createElement("style");
+            styleSheet.type = "text/css";
+            styleSheet.innerText = modalStyle;
+            document.head.appendChild(styleSheet);
+
+            examplesModalOverlay = document.createElement('div');
+            examplesModalOverlay.className = 'examples-modal-overlay';
+            
+            const modalContent = document.createElement('div');
+            modalContent.className = 'examples-modal-content';
+
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'examples-modal-close-btn';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = () => examplesModalOverlay.classList.remove('show');
+
+            const title = document.createElement('h2');
+            title.textContent = 'Chọn một phản ứng ví dụ';
+            
+            modalContent.appendChild(closeBtn);
+            modalContent.appendChild(title);
+
+            exampleReactions.forEach(cat => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'reaction-category';
+                
+                const categoryTitle = document.createElement('h3');
+                categoryTitle.innerHTML = cat.category;
+                categoryDiv.appendChild(categoryTitle);
+
+                const listDiv = document.createElement('div');
+                listDiv.className = 'reaction-list';
+
+                cat.reactions.forEach(reaction => {
+                    const item = document.createElement('div');
+                    item.className = 'reaction-item';
+                    item.textContent = reaction.name;
+                    item.dataset.input = reaction.input;
+                    item.onclick = (event) => {
+                        input.value = event.currentTarget.dataset.input;
+                        updateInputState();
+                        examplesModalOverlay.classList.remove('show');
+                        displayMessage(`Đã chọn ví dụ: ${event.currentTarget.dataset.input}`);
+                    };
+                    listDiv.appendChild(item);
+                });
+                categoryDiv.appendChild(listDiv);
+                modalContent.appendChild(categoryDiv);
+            });
+
+            examplesModalOverlay.appendChild(modalContent);
+            document.body.appendChild(examplesModalOverlay);
+            
+            examplesModalOverlay.addEventListener('click', (event) => {
+                if (event.target === examplesModalOverlay) {
+                    examplesModalOverlay.classList.remove('show');
+                }
+            });
+        }
+
+        /** Initializes the main application components. */
+        function initApp() {
+            init3D();
+            generateBtn.addEventListener('click', generateReactionPlan);
+            
+            // NEW: Create and setup example button and modal
+            createExamplesModal();
+            examplesBtn = document.createElement('button');
+            examplesBtn.innerHTML = `💡 Ví dụ`;
+            examplesBtn.className = 'control-btn'; // Use same class as others for styling
+            examplesBtn.style.marginLeft = '0.5rem';
+            examplesBtn.onclick = () => examplesModalOverlay.classList.add('show');
+            generateBtn.parentNode.insertBefore(examplesBtn, generateBtn.nextSibling); // Insert next to generate button
+
+
+            displayMessage("Hãy xem AI dự đoán và diễn họa phản ứng hóa học!");
+            toggleDragHint(true);
+            updateAtomLegend(null);
+            updateInputState();
+        }
+
+        /** Shows the explanation modal. */
+        function showExplanationModal(title, content, stepNumber) {
+            explanationTitle.textContent = `Bước ${stepNumber}: ${title}`;
+            explanationText.textContent = content;
+            explanationModalOverlay.classList.add('show');
+            [playPauseBtn, restartBtn, timelineSlider, ...speedButtons, explanationModeToggle].forEach(el => el.disabled = true);
+        }
+
+        /** Hides the explanation modal. */
+        function hideExplanationModal() {
+            explanationModalOverlay.classList.remove('show');
+            // Only re-enable controls if mainTimeline exists and is not currently active (i.e., paused or completed)
+            if (mainTimeline && !mainTimeline.isActive()) return;
+            if(mainTimeline) {
+                [playPauseBtn, restartBtn, timelineSlider, ...speedButtons, explanationModeToggle].forEach(el => el.disabled = false);
+            }
+        }
+
+        /** Updates the atom legend based on the current reaction plan. */
+        function updateAtomLegend(plan) {
+            atomLegendContent.innerHTML = '';
+            let uniqueAtomSymbols = new Set();
+            if (plan) {
+                plan.reactants.forEach(r => r.atoms.forEach(a => uniqueAtomSymbols.add(a.symbol)));
+                plan.products.forEach(p => p.atoms.forEach(a => uniqueAtomSymbols.add(a.symbol)));
+            } else {
+                // Default atoms if no plan is active
+                ['H', 'O', 'C'].forEach(s => uniqueAtomSymbols.add(s));
+            }
+            const atomsToShow = ATOM_COLORS.filter(atom => uniqueAtomSymbols.has(atom.symbol));
+            if (atomsToShow.length === 0) {
+                atomLegendContent.innerHTML = '<span class="text-sm text-gray-400">Không có chú thích.</span>';
+                atomLegendContent.classList.add('expanded');
+            } else {
+                atomsToShow.forEach(atom => {
+                    const item = document.createElement('div');
+                    item.classList.add('atom-legend-item'); // Changed class for styling
+                    item.innerHTML = `<div class="atom-color-circle" style="background-color: ${atom.color};"></div><span>${atom.symbol}</span>`;
+                    atomLegendContent.appendChild(item);
+                });
+                atomLegendContent.classList.add('expanded');
+                atomLegendToggle.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        // Initial load behavior
+        showWelcomeModal();
+        // Ensure legend is collapsed initially on page load
+        atomLegendContent.classList.remove('expanded');
+        atomLegendToggle.style.transform = 'rotate(0deg)';
+    </script>
+</body>
+</html>
