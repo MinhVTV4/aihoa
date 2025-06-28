@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bảng Tuần Hoàn Tương Tác - AI hoạt động</title>
+    <title>Bảng Tuần Hoàn Tương Tác - Xu hướng Tuần hoàn</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Marked.js CDN -->
@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            font-size: 10px; /* Base font size for easy rem calculations */
+            font-size: 10px;
         }
         body {
             font-family: 'Roboto', sans-serif;
@@ -19,12 +19,17 @@
             color: #333;
             padding: 1.5rem;
         }
+        .controls-wrapper {
+            max-width: 1200px;
+            margin: 0 auto 1rem auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
         .top-controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 1200px;
-            margin: 0 auto 1rem auto;
             flex-wrap: wrap;
             gap: 1.5rem;
         }
@@ -42,7 +47,7 @@
             padding: 0.5rem;
             font-size: 1.4rem;
         }
-        .temperature-controls {
+        .control-group {
             display: flex;
             align-items: center;
             gap: 1rem;
@@ -51,27 +56,30 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .temperature-controls label {
+        .control-group label {
             font-weight: 700;
             font-size: 1.6rem;
             color: #0056b3;
         }
-        .temperature-controls button {
+        .control-group button, .control-group .trend-button {
             background-color: #e0f2fe;
             border: 1px solid #007bff;
             color: #007bff;
             font-weight: bold;
-            width: 3rem;
-            height: 3rem;
-            border-radius: 50%;
+            border-radius: 1.5rem;
             cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 1.8rem;
+            transition: all 0.2s;
+            font-size: 1.4rem;
+            padding: 0.5rem 1.2rem;
         }
-        .temperature-controls button:hover {
+        .control-group button:hover, .control-group .trend-button:hover {
             background-color: #cce9ff;
         }
-        .temperature-controls input {
+        .control-group .trend-button.selected {
+             background-color: #007bff;
+             color: white;
+        }
+        .control-group input {
             width: 7rem;
             text-align: center;
             border: 1px solid #ccc;
@@ -85,153 +93,46 @@
             width: 100%;
             margin: auto;
         }
-        
-        .status-message {
-            text-align: center;
-            margin-bottom: 1rem;
-            font-size: 1.4rem;
-            font-weight: 500;
-            color: #555;
-            height: 2rem;
-            transition: color 0.3s ease;
-        }
+        .status-message { text-align: center; margin-bottom: 1rem; font-size: 1.4rem; font-weight: 500; color: #555; height: 2rem; transition: color 0.3s ease; }
         .status-message.error-text { color: #dc3545; }
         .status-message.success-text { color: #28a745; }
         .status-message.info-text { color: #0056b3; }
-
-
-        .legend-container {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 0.8rem;
-            max-width: 1200px;
-            margin: 0 auto 2rem auto;
-        }
-        .legend-item {
-            padding: 0.6rem 1.2rem;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 1.2rem;
-            font-weight: 500;
-            border: 1px solid transparent;
-        }
-        .legend-item:hover {
-            opacity: 0.8;
-        }
-        .legend-item.selected {
-            border: 1px solid #007bff;
-            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .periodic-table-wrapper {
-            display: grid;
-            grid-template-columns: 2.5rem repeat(18, 1fr);
-            gap: 4px;
-        }
-        .period-number {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #555;
-        }
-        .periodic-table-grid {
-            grid-column: 2 / span 18;
-            display: grid;
-            grid-template-columns: repeat(18, minmax(0, 1fr));
-            gap: 4px;
-        }
-
-        .element-cell {
-            border-radius: 4px;
-            padding: 0.5rem 0.2rem;
-            display: flex;
-            flex-direction: column;
-            cursor: pointer;
-            transition: all 0.2s ease-in-out, opacity 0.3s ease, filter 0.3s ease;
-            font-size: 1rem;
-            line-height: 1.1;
-            min-height: 60px;
-            position: relative;
-            text-align: center;
-            color: #333;
-        }
-        .element-cell:hover {
-            transform: scale(1.1);
-            z-index: 10;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-        .element-cell.dimmed {
-            opacity: 0.2;
-            filter: grayscale(80%);
-            pointer-events: none;
-        }
-        .element-number {
-            font-size: 1.1rem;
-            font-weight: 500;
-            position: absolute;
-            top: 4px;
-            left: 4px;
-        }
-        .element-symbol {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-top: 0.2rem;
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .element-name, .element-mass {
-            font-size: 1rem;
-            margin-top: 0.1rem;
-        }
-
-        /* Symbol colors for physical state */
-        .state-solid { color: #000000; }
-        .state-liquid { color: #008000; }
-        .state-gas { color: #ff0000; }
-        .state-unknown { color: #888888; }
-
-        /* Background colors for element groups */
-        .alkali-metal { background-color: #ffcdd2; border: 1px solid #e57373; }
-        .alkaline-earth-metal { background-color: #ffe0b2; border: 1px solid #ffb74d; }
-        .transition-metal { background-color: #e1f5fe; border: 1px solid #4fc3f7; }
-        .post-transition-metal { background-color: #b2dfdb; border: 1px solid #4db6ac; }
-        .metalloid { background-color: #cfd8dc; border: 1px solid #90a4ae; }
-        .other-nonmetal { background-color: #f0f4c3; border: 1px solid #dce775; }
-        .halogen { background-color: #d1c4e9; border: 1px solid #9575cd; }
-        .noble-gas { background-color: #b3e5fc; border: 1px solid #4dd0e1; }
-        .lanthanide { background-color: #fff9c4; border: 1px solid #fff176; }
-        .actinide { background-color: #ffccbc; border: 1px solid #ff8a65; }
+        .legend-container { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.8rem; max-width: 1200px; margin: 0 auto 2rem auto; }
+        .legend-item { padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; font-size: 1.2rem; font-weight: 500; border: 1px solid transparent; }
+        .legend-item:hover { opacity: 0.8; }
+        .legend-item.selected { border: 1px solid #007bff; box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); transform: translateY(-2px); }
+        .trend-legend-container { display: flex; justify-content: center; align-items: center; gap: 1rem; margin: 0 auto 2rem auto; font-size: 1.4rem; font-weight: 500; }
+        .trend-legend-gradient { width: 200px; height: 20px; border-radius: 5px; border: 1px solid #ccc; }
         
+        .periodic-table-wrapper { display: grid; grid-template-columns: 2.5rem repeat(18, 1fr); gap: 4px; }
+        .period-number { display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700; color: #555; }
+        .periodic-table-grid { grid-column: 2 / span 18; display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 4px; }
+        .element-cell { border-radius: 4px; padding: 0.5rem 0.2rem; display: flex; flex-direction: column; cursor: pointer; transition: all 0.2s ease-in-out, opacity 0.3s ease, filter 0.3s ease; font-size: 1rem; line-height: 1.1; min-height: 60px; position: relative; text-align: center; color: #333; }
+        .element-cell:hover { transform: scale(1.1); z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .element-cell.dimmed { opacity: 0.2; filter: grayscale(80%); pointer-events: none; }
+        .element-number { font-size: 1.1rem; font-weight: 500; position: absolute; top: 4px; left: 4px; }
+        .element-symbol { font-size: 1.8rem; font-weight: 700; margin-top: 0.2rem; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
+        .element-name, .element-mass { font-size: 1rem; margin-top: 0.1rem; }
+        
+        .state-solid { color: #000000; } .state-liquid { color: #008000; } .state-gas { color: #ff0000; } .state-unknown { color: #888888; }
+        .alkali-metal { background-color: #ffcdd2; border: 1px solid #e57373; } .alkaline-earth-metal { background-color: #ffe0b2; border: 1px solid #ffb74d; }
+        .transition-metal { background-color: #e1f5fe; border: 1px solid #4fc3f7; } .post-transition-metal { background-color: #b2dfdb; border: 1px solid #4db6ac; }
+        .metalloid { background-color: #cfd8dc; border: 1px solid #90a4ae; } .other-nonmetal { background-color: #f0f4c3; border: 1px solid #dce775; }
+        .halogen { background-color: #d1c4e9; border: 1px solid #9575cd; } .noble-gas { background-color: #b3e5fc; border: 1px solid #4dd0e1; }
+        .lanthanide { background-color: #fff9c4; border: 1px solid #fff176; } .actinide { background-color: #ffccbc; border: 1px solid #ff8a65; }
+        .no-data { background-color: #f5f5f5; border: 1px solid #e0e0e0; color: #9e9e9e; }
         .empty-cell { visibility: hidden; pointer-events: none; }
-        .lanthanide-ref, .actinide-ref {
-            background-color: #d1eaff;
-            border: 1px solid #a6d4fa;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-        }
+        .lanthanide-ref, .actinide-ref { background-color: #d1eaff; border: 1px solid #a6d4fa; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         
-        /* Bottom F-Block */
         .f-block-wrapper { margin: 2rem auto; max-width: 1060px; }
         .f-block-grid { display: grid; grid-template-columns: 2.5rem 2.7rem 1fr; gap: 4px; align-items: center; }
         .f-block-table { display: grid; grid-template-columns: repeat(15, 1fr); gap: 4px; }
     
-        /* Bottom Sheet */
         #bottomSheetOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; display: none; }
         #bottomSheet { position: fixed; bottom: 0; left: 0; width: 100%; max-height: 80vh; background-color: #ffffff; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -8px 20px rgba(0,0,0,0.2); z-index: 1001; transform: translateY(100%); transition: transform 0.3s ease-out; display: flex; flex-direction: column; }
         #bottomSheet.active { transform: translateY(0); }
         #bottomSheetContent { padding: 25px; overflow-y: auto; flex-grow: 1; }
         #bottomSheet .close-button { position: sticky; top: 0; align-self: flex-end; margin: 15px 15px 0 0; background: #e0e0e0; border: none; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; z-index: 1002; }
-        #bottomSheet .close-button:hover { background-color: #d0d0d0; }
         #bottomSheetContent h3 { font-size: 2.2rem; font-weight: 700; color: #007bff; margin-bottom: 15px; }
         
         .loading-spinner { display: flex; justify-content: center; align-items: center; min-height: 100px; }
@@ -240,18 +141,25 @@
     </style>
 </head>
 <body>
-    <div class="top-controls">
-        <div class="search-container">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-search text-gray-400" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
-            <input type="text" id="searchInput" placeholder="Tìm kiếm nguyên tố...">
+    <div class="controls-wrapper">
+        <div class="top-controls">
+            <div class="search-container">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-search text-gray-400" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
+                <input type="text" id="searchInput" placeholder="Tìm kiếm nguyên tố...">
+            </div>
+            <div class="control-group" id="trends-control">
+                 <button class="trend-button" data-trend="electronegativity">Độ âm điện</button>
+                 <button class="trend-button" data-trend="ionizationEnergy">NL ion hóa</button>
+                 <button class="trend-button" data-trend="atomicRadius">Bán kính NT</button>
+                 <button class="trend-button" data-trend="none">Tắt</button>
+            </div>
+            <div class="control-group">
+                <label>Nhiệt độ:</label>
+                <input type="number" id="kelvinInput" value="298">
+                <label>K</label>
+            </div>
         </div>
-        <div class="temperature-controls">
-            <label>Nhiệt độ:</label>
-            <button id="tempMinusBtn">-</button>
-            <input type="number" id="kelvinInput" value="298">
-            <label>K</label>
-            <button id="tempPlusBtn">+</button>
-        </div>
+        <div id="trend-legend-container" class="trend-legend-container hidden"></div>
     </div>
     
     <div id="statusMessage" class="status-message"></div>
@@ -283,29 +191,37 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
         import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-ai.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBsTFay_kTVzr2J50pxrAUdiuOBkwNSJHY",
-            authDomain: "aith-c70eb.firebaseapp.com",
-            projectId: "aith-c70eb",
-            storageBucket: "aith-c70eb.firebasestorage.app",
-            messagingSenderId: "556224999133",
-            appId: "1:556224999133:web:a79ae0f22b612dc167b534"
-        };
+        // --- DATA ---
+        const firebaseConfig = { apiKey: "AIzaSyBsTFay_kTVzr2J50pxrAUdiuOBkwNSJHY", authDomain: "aith-c70eb.firebaseapp.com", projectId: "aith-c70eb", storageBucket: "aith-c70eb.firebasestorage.app", messagingSenderId: "556224999133", appId: "1:556224999133:web:a79ae0f22b612dc167b534" };
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+        const trendData = {
+            electronegativity: {1:2.2,2:null,3:0.98,4:1.57,5:2.04,6:2.55,7:3.04,8:3.44,9:3.98,10:null,11:0.93,12:1.31,13:1.61,14:1.9,15:2.19,16:2.58,17:3.16,18:null,19:0.82,20:1,21:1.36,22:1.54,23:1.63,24:1.66,25:1.55,26:1.83,27:1.88,28:1.91,29:1.9,30:1.65,31:1.81,32:2.01,33:2.18,34:2.55,35:2.96,36:3,37:0.82,38:0.95,39:1.22,40:1.33,41:1.6,42:2.16,43:1.9,44:2.2,45:2.28,46:2.2,47:1.93,48:1.69,49:1.78,50:1.96,51:2.05,52:2.1,53:2.66,54:2.6,55:0.79,56:0.89,57:1.1,58:1.12,59:1.13,60:1.14,61:1.13,62:1.17,63:1.2,64:1.2,65:1.2,66:1.22,67:1.23,68:1.24,69:1.25,70:1.1,71:1.27,72:1.3,73:1.5,74:2.36,75:1.9,76:2.2,77:2.2,78:2.28,79:2.54,80:2,81:1.62,82:2.33,83:2.02,84:2,85:2.2,86:2.6,87:0.7,88:0.9,89:1.1,90:1.3,91:1.5,92:1.38,93:1.36,94:1.28,95:1.3,96:1.3,97:1.3,98:1.3,99:1.3,100:1.3,101:1.3,102:1.3,103:null,104:null,105:null,106:null,107:null,108:null,109:null,110:null,111:null,112:null,113:null,114:null,115:null,116:null,117:null,118:null},
+            ionizationEnergy: {1:1312,2:2372.3,3:520.2,4:899.5,5:800.6,6:1086.5,7:1402.3,8:1313.9,9:1681,10:2080.7,11:495.8,12:737.7,13:577.5,14:786.5,15:1011.8,16:999.6,17:1251.2,18:1520.6,19:418.8,20:589.8,21:633.1,22:658.8,23:650.9,24:652.9,25:717.3,26:762.5,27:760.4,28:737.1,29:745.5,30:906.4,31:578.8,32:762,33:947,34:941,35:1139.9,36:1350.8,37:403,38:549.5,39:600,40:640.1,41:652.1,42:684.3,43:702,44:710.2,45:719.7,46:804.4,47:731,48:867.8,49:558.3,50:708.6,51:834,52:869.3,53:1008.4,54:1170.4,55:375.7,56:502.9,57:538.1,58:534.4,59:527.4,60:533.1,61:540,62:544.5,63:547.1,64:593.4,65:565.8,66:573,67:581,68:589.3,69:596.7,70:603.4,71:523.5,72:654,73:761,74:770,75:760,76:840,77:880,78:870,79:890.1,80:1007.1,81:589.4,82:715.6,83:703,84:812.1,85:890,86:1037,87:380,88:509.3,89:490,90:587,91:568,92:597.6,93:604.5,94:584.7,95:578,96:581,97:601,98:608,99:619,100:627,101:635,102:642,103:null,104:null,105:null,106:null,107:null,108:null,109:null,110:null,111:null,112:null,113:null,114:null,115:null,116:null,117:null,118:null},
+            atomicRadius: {1:53,2:31,3:167,4:112,5:87,6:67,7:56,8:48,9:42,10:38,11:190,12:145,13:118,14:111,15:98,16:88,17:79,18:71,19:243,20:194,21:184,22:176,23:171,24:166,25:161,26:156,27:152,28:149,29:145,30:142,31:136,32:125,33:114,34:103,35:94,36:88,37:265,38:219,39:200,40:186,41:189,42:190,43:183,44:178,45:173,46:169,47:165,48:161,49:156,50:145,51:133,52:123,53:115,54:108,55:298,56:253,57:207,58:204,59:206,60:205,61:203,62:202,63:208,64:199,65:196,66:194,67:192,68:190,69:187,70:185,71:185,72:187,73:180,74:180,75:180,76:170,77:170,78:160,79:150,80:150,81:190,82:170,83:160,84:150,85:140,86:130,87:null,88:215,89:195,90:180,91:175,92:170,93:165,94:160,95:180,96:null,97:null,98:null,99:null,100:null,101:null,102:null,103:null,104:null,105:null,106:null,107:null,108:null,109:null,110:null,111:null,112:null,113:null,114:null,115:null,116:null,117:null,118:null},
+            atomicMasses: { 1:1.008,2:4.0026,3:6.94,4:9.0122,5:10.81,6:12.011,7:14.007,8:15.999,9:18.998,10:20.18,11:22.99,12:24.305,13:26.982,14:28.085,15:30.974,16:32.06,17:35.45,18:39.948,19:39.098,20:40.078,21:44.956,22:47.867,23:50.942,24:51.996,25:54.938,26:55.845,27:58.933,28:58.693,29:63.546,30:65.38,31:69.723,32:72.63,33:74.922,34:78.971,35:79.904,36:83.798,37:85.468,38:87.62,39:88.906,40:91.224,41:92.906,42:95.96,43:98,44:101.07,45:102.91,46:106.42,47:107.87,48:112.41,49:114.82,50:118.71,51:121.76,52:127.6,53:126.9,54:131.29,55:132.91,56:137.33,57:138.91,58:140.12,59:140.91,60:144.24,61:145,62:150.36,63:151.96,64:157.25,65:158.93,66:162.5,67:164.93,68:167.26,69:168.93,70:173.05,71:174.97,72:178.49,73:180.95,74:183.84,75:186.21,76:190.23,77:192.22,78:195.08,79:196.97,80:200.59,81:204.38,82:207.2,83:208.98,84:209,85:210,86:222,87:223,88:226,89:227,90:232.04,91:231.04,92:238.03,93:237,94:244,95:243,96:247,97:247,98:251,99:252,100:257,101:258,102:259,103:266,104:267,105:268,106:269,107:270,108:269,109:278,110:281,111:282,112:285,113:286,114:289,115:289,116:293,117:294,118:294 }
+        };
+        const colorGradients = {
+            electronegativity: ['#ffffff', '#f44336'], // White to Red
+            ionizationEnergy: ['#ffffff', '#2196f3'], // White to Blue
+            atomicRadius: ['#ffffff', '#4caf50'], // White to Green
+        };
+        
+        // --- GLOBAL STATE ---
         let app, auth, model;
         let elements = [];
         let currentTemperatureKelvin = 298;
         let activeGroupFilter = null;
+        let activeTrend = 'none';
 
+        // --- DOM ELEMENTS ---
         const dom = {
             tableWrapper: document.getElementById('periodicTableWrapper'),
             lanthanidesBlock: document.getElementById('lanthanidesBlock'),
             actinidesBlock: document.getElementById('actinidesBlock'),
             searchInput: document.getElementById('searchInput'),
             kelvinInput: document.getElementById('kelvinInput'),
-            tempMinusBtn: document.getElementById('tempMinusBtn'),
-            tempPlusBtn: document.getElementById('tempPlusBtn'),
+            trendsControl: document.getElementById('trends-control'),
+            trendLegendContainer: document.getElementById('trend-legend-container'),
             legendContainer: document.getElementById('legend-container'),
             bottomSheet: document.getElementById('bottomSheet'),
             bottomSheetOverlay: document.getElementById('bottomSheetOverlay'),
@@ -316,9 +232,15 @@
             statusMessage: document.getElementById('statusMessage'),
         };
         
-        const atomicMasses = { 1:1.008,2:4.0026,3:6.94,4:9.0122,5:10.81,6:12.011,7:14.007,8:15.999,9:18.998,10:20.18,11:22.99,12:24.305,13:26.982,14:28.085,15:30.974,16:32.06,17:35.45,18:39.948,19:39.098,20:40.078,21:44.956,22:47.867,23:50.942,24:51.996,25:54.938,26:55.845,27:58.933,28:58.693,29:63.546,30:65.38,31:69.723,32:72.63,33:74.922,34:78.971,35:79.904,36:83.798,37:85.468,38:87.62,39:88.906,40:91.224,41:92.906,42:95.96,43:98,44:101.07,45:102.91,46:106.42,47:107.87,48:112.41,49:114.82,50:118.71,51:121.76,52:127.6,53:126.9,54:131.29,55:132.91,56:137.33,57:138.91,58:140.12,59:140.91,60:144.24,61:145,62:150.36,63:151.96,64:157.25,65:158.93,66:162.5,67:164.93,68:167.26,69:168.93,70:173.05,71:174.97,72:178.49,73:180.95,74:183.84,75:186.21,76:190.23,77:192.22,78:195.08,79:196.97,80:200.59,81:204.38,82:207.2,83:208.98,84:209,85:210,86:222,87:223,88:226,89:227,90:232.04,91:231.04,92:238.03,93:237,94:244,95:243,96:247,97:247,98:251,99:252,100:257,101:258,102:259,103:266,104:267,105:268,106:269,107:270,108:269,109:278,110:281,111:282,112:285,113:286,114:289,115:289,116:293,117:294,118:294 };
+        // --- CORE FUNCTIONS ---
         function augmentElementData(elements) {
-            return elements.map(el => ({ ...el, atomic_mass: atomicMasses[el.number] || 0 }));
+            return elements.map(el => ({ 
+                ...el, 
+                atomic_mass: trendData.atomicMasses[el.number] || 0,
+                electronegativity: trendData.electronegativity[el.number] || null,
+                ionizationEnergy: trendData.ionizationEnergy[el.number] || null,
+                atomicRadius: trendData.atomicRadius[el.number] || null,
+            }));
         }
 
         function updateStatus(type, message) {
@@ -329,10 +251,7 @@
         function createCell(element) {
             const cell = document.createElement('div');
             cell.className = `element-cell ${element.group}`;
-            cell.dataset.symbol = element.symbol;
-            cell.dataset.name = element.name;
             cell.dataset.number = element.number;
-            cell.dataset.group = element.group;
             cell.innerHTML = `<span class="element-number">${element.number}</span><div class="element-symbol">${element.symbol}</div><div class="element-name">${element.name}</div><div class="element-mass">${element.atomic_mass > 0 ? element.atomic_mass.toFixed(3) : ''}</div>`;
             cell.addEventListener('click', () => handleElementClick(element));
             return cell;
@@ -359,47 +278,191 @@
                 symbolDiv.classList.add(`state-${state}`);
             });
         }
-
-        function applyGroupFilter() {
-            document.querySelectorAll('.element-cell[data-number]').forEach(cell => {
-                cell.classList.toggle('dimmed', activeGroupFilter && cell.dataset.group !== activeGroupFilter);
-            });
-        }
         
-        // --- UPDATED SEARCH FUNCTION ---
+        // --- UI & EVENT HANDLERS ---
         function handleSearch() {
             const query = dom.searchInput.value.toLowerCase().trim();
-            if(activeGroupFilter) {
-                activeGroupFilter = null;
-                document.querySelector('.legend-item.selected')?.classList.remove('selected');
-                applyGroupFilter();
-            }
-
+            clearFilters();
+            
             document.querySelectorAll('.element-cell[data-number]').forEach(cell => {
                 if (!query) {
                     cell.classList.remove('dimmed');
                     return;
                 }
-
-                const name = cell.dataset.name.toLowerCase();
-                const symbol = cell.dataset.symbol.toLowerCase();
-                const number = cell.dataset.number;
-
-                let isMatch = false;
+                const element = elements.find(el => el.number == cell.dataset.number);
+                if (!element) return;
                 
-                // Prioritize symbol and number matching
-                if (symbol.startsWith(query) || number === query) {
-                    isMatch = true;
-                }
-                // Only search by name for longer queries to avoid overly broad results
-                else if (query.length > 2 && name.includes(query)) {
-                    isMatch = true;
-                }
-                
+                const name = element.name.toLowerCase();
+                const symbol = element.symbol.toLowerCase();
+                const number = element.number.toString();
+
+                let isMatch = (query.length <= 2) ? (symbol === query || number === query) : name.includes(query);
                 cell.classList.toggle('dimmed', !isMatch);
             });
         }
         
+        function handleLegendClick(event) {
+            const clickedItem = event.target.closest('.legend-item');
+            if (!clickedItem) return;
+            clearFilters(false);
+            const group = clickedItem.dataset.group;
+            
+            if (activeGroupFilter === group) {
+                activeGroupFilter = null;
+                clickedItem.classList.remove('selected');
+            } else {
+                activeGroupFilter = group;
+                clickedItem.classList.add('selected');
+            }
+            applyGroupFilter();
+        }
+
+        function handleTrendClick(event) {
+            const clickedItem = event.target.closest('.trend-button');
+            if (!clickedItem) return;
+            clearFilters(false);
+
+            const trend = clickedItem.dataset.trend;
+            activeTrend = trend;
+            applyTrendVisualization();
+        }
+
+        function clearFilters(clearAll = true) {
+            if (clearAll) dom.searchInput.value = '';
+            document.querySelector('.legend-item.selected')?.classList.remove('selected');
+            document.querySelectorAll('.element-cell').forEach(cell => cell.classList.remove('dimmed'));
+            activeGroupFilter = null;
+        }
+
+        function applyGroupFilter() {
+            document.querySelectorAll('.element-cell[data-number]').forEach(cell => {
+                const element = elements.find(el => el.number == cell.dataset.number);
+                if(!element) return;
+                cell.classList.toggle('dimmed', activeGroupFilter && element.group !== activeGroupFilter);
+            });
+        }
+        
+        // --- TREND VISUALIZATION ---
+        function applyTrendVisualization() {
+            // Update button UI
+            document.querySelectorAll('.trend-button').forEach(btn => {
+                btn.classList.toggle('selected', btn.dataset.trend === activeTrend);
+            });
+        
+            if (activeTrend === 'none') {
+                resetElementBackgrounds();
+                dom.trendLegendContainer.classList.add('hidden');
+                return;
+            }
+
+            const validElements = elements.filter(el => el[activeTrend] !== null);
+            if (validElements.length === 0) return;
+
+            const values = validElements.map(el => el[activeTrend]);
+            const minVal = Math.min(...values);
+            const maxVal = Math.max(...values);
+            const gradient = colorGradients[activeTrend];
+
+            elements.forEach(el => {
+                const cell = document.querySelector(`.element-cell[data-number='${el.number}']`);
+                if (!cell) return;
+
+                const value = el[activeTrend];
+                if (value === null) {
+                    cell.classList.add('no-data');
+                    cell.style.backgroundColor = '';
+                    cell.style.borderColor = '';
+                } else {
+                    cell.classList.remove('no-data');
+                    const color = mapValueToColor(value, minVal, maxVal, gradient[0], gradient[1]);
+                    cell.style.backgroundColor = color;
+                    cell.style.borderColor = color; // Make border same as background for solid look
+                }
+            });
+
+            // Update and show legend
+            dom.trendLegendContainer.innerHTML = `
+                <span>${minVal}</span>
+                <div class="trend-legend-gradient" style="background: linear-gradient(to right, ${gradient[0]}, ${gradient[1]})"></div>
+                <span>${maxVal}</span>
+            `;
+            dom.trendLegendContainer.classList.remove('hidden');
+        }
+
+        function resetElementBackgrounds() {
+             elements.forEach(el => {
+                const cell = document.querySelector(`.element-cell[data-number='${el.number}']`);
+                if (!cell) return;
+                cell.classList.remove('no-data');
+                cell.style.backgroundColor = ''; // Reverts to CSS-defined color
+                cell.style.borderColor = '';
+            });
+        }
+        
+        function mapValueToColor(value, min, max, color1, color2) {
+            const percent = (value - min) / (max - min);
+            const hexToRgb = (hex) => hex.match(/\w\w/g).map(c => parseInt(c, 16));
+            const [r1, g1, b1] = hexToRgb(color1.substring(1));
+            const [r2, g2, b2] = hexToRgb(color2.substring(1));
+
+            const r = Math.round(r1 + percent * (r2 - r1));
+            const g = Math.round(g1 + percent * (g2 - g1));
+            const b = Math.round(b1 + percent * (b2 - b1));
+
+            return `rgb(${r},${g},${b})`;
+        }
+
+
+        // --- UI CREATION ---
+        function createUIGrids() {
+            dom.tableWrapper.innerHTML = '';
+            const grid = Array(7).fill(null).map(() => Array(18).fill(null));
+            elements.forEach(el => {
+                if (el.row > 7 || el.col > 18) return;
+                if (el.group === 'lanthanide') {
+                    if (!grid[5][2]) grid[5][2] = { type: 'ref', class: 'lanthanide-ref', text: '57-71' };
+                } else if (el.group === 'actinide') {
+                    if (!grid[6][2]) grid[6][2] = { type: 'ref', class: 'actinide-ref', text: '89-103' };
+                } else {
+                    grid[el.row - 1][el.col - 1] = { type: 'element', data: el };
+                }
+            });
+
+            for (let r = 0; r < 7; r++) {
+                const periodNum = document.createElement('div');
+                periodNum.className = 'period-number';
+                periodNum.textContent = r + 1;
+                dom.tableWrapper.appendChild(periodNum);
+                const rowGrid = document.createElement('div');
+                rowGrid.className = 'periodic-table-grid';
+                rowGrid.style.gridRow = r + 1;
+                for (let c = 0; c < 18; c++) {
+                    const cellData = grid[r][c];
+                    const cellEl = document.createElement('div');
+                    if (cellData) {
+                        if (cellData.type === 'element') {
+                             rowGrid.appendChild(createCell(cellData.data));
+                        } else {
+                             cellEl.className = `element-cell ${cellData.class}`;
+                             cellEl.textContent = cellData.text;
+                             rowGrid.appendChild(cellEl);
+                        }
+                    } else {
+                       cellEl.className = 'empty-cell';
+                       rowGrid.appendChild(cellEl);
+                    }
+                }
+                dom.tableWrapper.appendChild(rowGrid);
+            }
+            // Create F-Block
+            dom.lanthanidesBlock.innerHTML = `<div class="period-number">6</div> <div></div> <div class="f-block-table" id="lanthanides-inner-grid"></div>`;
+            dom.actinidesBlock.innerHTML = `<div class="period-number">7</div> <div></div> <div class="f-block-table" id="actinides-inner-grid"></div>`;
+            const lanthGrid = document.getElementById('lanthanides-inner-grid');
+            const actiGrid = document.getElementById('actinides-inner-grid');
+            elements.filter(el => el.group === 'lanthanide').sort((a,b) => a.number - b.number).forEach(el => lanthGrid.appendChild(createCell(el)));
+            elements.filter(el => el.group === 'actinide').sort((a,b) => a.number - b.number).forEach(el => actiGrid.appendChild(createCell(el)));
+        }
+
         function createTopLegend() {
             const legendData = [
                 { class: 'alkali-metal', text: 'Kim loại kiềm' }, { class: 'alkaline-earth-metal', text: 'Kim loại kiềm thổ' },
@@ -416,76 +479,8 @@
                 dom.legendContainer.appendChild(legendItem);
             });
         }
-
-        function handleLegendClick(event) {
-            const clickedItem = event.target.closest('.legend-item');
-            if (!clickedItem) return;
-            dom.searchInput.value = '';
-            handleSearch();
-            const group = clickedItem.dataset.group;
-            if (activeGroupFilter === group) {
-                activeGroupFilter = null;
-                clickedItem.classList.remove('selected');
-            } else {
-                document.querySelector('.legend-item.selected')?.classList.remove('selected');
-                activeGroupFilter = group;
-                clickedItem.classList.add('selected');
-            }
-            applyGroupFilter();
-        }
-
-        function createUIGrids() {
-            dom.tableWrapper.innerHTML = '';
-            const grid = Array(7).fill(null).map(() => Array(18).fill(null));
-            elements.forEach(el => {
-                if (el.row > 7 || el.col > 18) return;
-                if (el.group === 'lanthanide') {
-                    if (!grid[5][2]) grid[5][2] = { type: 'ref', class: 'lanthanide-ref', text: '57-71' };
-                    return;
-                }
-                if (el.group === 'actinide') {
-                    if (!grid[6][2]) grid[6][2] = { type: 'ref', class: 'actinide-ref', text: '89-103' };
-                    return;
-                }
-                grid[el.row - 1][el.col - 1] = { type: 'element', data: el };
-            });
-
-            for (let r = 0; r < 7; r++) {
-                const periodNum = document.createElement('div');
-                periodNum.className = 'period-number';
-                periodNum.textContent = r + 1;
-                dom.tableWrapper.appendChild(periodNum);
-                const rowGrid = document.createElement('div');
-                rowGrid.className = 'periodic-table-grid';
-                rowGrid.style.gridRow = r + 1;
-                for (let c = 0; c < 18; c++) {
-                    const cellData = grid[r][c];
-                    if (cellData) {
-                        if (cellData.type === 'element') {
-                             rowGrid.appendChild(createCell(cellData.data));
-                        } else {
-                             const refCell = document.createElement('div');
-                             refCell.className = `element-cell ${cellData.class}`;
-                             refCell.textContent = cellData.text;
-                             rowGrid.appendChild(refCell);
-                        }
-                    } else {
-                       const emptyCell = document.createElement('div');
-                       emptyCell.className = 'empty-cell';
-                       rowGrid.appendChild(emptyCell);
-                    }
-                }
-                dom.tableWrapper.appendChild(rowGrid);
-            }
-            // Create F-Block
-            dom.lanthanidesBlock.innerHTML = `<div class="period-number">6</div> <div></div> <div class="f-block-table" id="lanthanides-inner-grid"></div>`;
-            dom.actinidesBlock.innerHTML = `<div class="period-number">7</div> <div></div> <div class="f-block-table" id="actinides-inner-grid"></div>`;
-            const lanthGrid = document.getElementById('lanthanides-inner-grid');
-            const actiGrid = document.getElementById('actinides-inner-grid');
-            elements.filter(el => el.group === 'lanthanide').sort((a,b) => a.number - b.number).forEach(el => lanthGrid.appendChild(createCell(el)));
-            elements.filter(el => el.group === 'actinide').sort((a,b) => a.number - b.number).forEach(el => actiGrid.appendChild(createCell(el)));
-        }
-
+        
+        // --- INITIALIZATION ---
         async function handleElementClick(element) {
             dom.bottomSheet.classList.add('active');
             dom.bottomSheetOverlay.style.display = 'block';
@@ -520,7 +515,7 @@
         }
         
         async function initializeFirebaseAndAI() {
-            try {
+             try {
                 updateStatus('info-text', 'Đang khởi tạo Firebase & AI...');
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
@@ -533,7 +528,6 @@
                         console.log("Đăng nhập bằng custom token thành công.");
                     } catch (tokenError) {
                         console.error("Lỗi custom token (sẽ thử đăng nhập ẩn danh):", tokenError);
-                        // Fallback to anonymous sign-in
                     }
                 }
 
@@ -544,7 +538,7 @@
                        console.log("Đăng nhập ẩn danh thành công.");
                     } catch (anonymousError) {
                         console.error("Lỗi đăng nhập ẩn danh:", anonymousError);
-                        throw anonymousError; // Throw error to be caught by the outer catch
+                        throw anonymousError;
                     }
                 }
                 
@@ -578,13 +572,11 @@
             // Setup Listeners
             dom.searchInput.addEventListener('input', handleSearch);
             dom.legendContainer.addEventListener('click', handleLegendClick);
-            dom.tempMinusBtn.addEventListener('click', () => { currentTemperatureKelvin = Math.max(0, currentTemperatureKelvin - 10); updateElementStates(); });
-            dom.tempPlusBtn.addEventListener('click', () => { currentTemperatureKelvin += 10; updateElementStates(); });
+            dom.trendsControl.addEventListener('click', handleTrendClick);
             dom.kelvinInput.addEventListener('change', () => { currentTemperatureKelvin = parseFloat(dom.kelvinInput.value) || 298; updateElementStates(); });
             dom.closeBottomSheetButton.addEventListener('click', () => { dom.bottomSheet.classList.remove('active'); dom.bottomSheetOverlay.style.display = 'none'; });
             dom.bottomSheetOverlay.addEventListener('click', () => dom.closeBottomSheetButton.click());
 
-            // Initialize the backend after UI is ready
             await initializeFirebaseAndAI();
         }
 
