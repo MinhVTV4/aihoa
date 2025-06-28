@@ -361,11 +361,12 @@
         }
 
         function applyGroupFilter() {
-            document.querySelectorAll('.element-cell').forEach(cell => {
+            document.querySelectorAll('.element-cell[data-number]').forEach(cell => {
                 cell.classList.toggle('dimmed', activeGroupFilter && cell.dataset.group !== activeGroupFilter);
             });
         }
         
+        // --- UPDATED SEARCH FUNCTION ---
         function handleSearch() {
             const query = dom.searchInput.value.toLowerCase().trim();
             if(activeGroupFilter) {
@@ -373,15 +374,29 @@
                 document.querySelector('.legend-item.selected')?.classList.remove('selected');
                 applyGroupFilter();
             }
-            document.querySelectorAll('.element-cell').forEach(cell => {
+
+            document.querySelectorAll('.element-cell[data-number]').forEach(cell => {
                 if (!query) {
                     cell.classList.remove('dimmed');
                     return;
                 }
+
                 const name = cell.dataset.name.toLowerCase();
                 const symbol = cell.dataset.symbol.toLowerCase();
                 const number = cell.dataset.number;
-                cell.classList.toggle('dimmed', !(name.includes(query) || symbol.startsWith(query) || number === query));
+
+                let isMatch = false;
+                
+                // Prioritize symbol and number matching
+                if (symbol.startsWith(query) || number === query) {
+                    isMatch = true;
+                }
+                // Only search by name for longer queries to avoid overly broad results
+                else if (query.length > 2 && name.includes(query)) {
+                    isMatch = true;
+                }
+                
+                cell.classList.toggle('dimmed', !isMatch);
             });
         }
         
