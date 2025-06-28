@@ -84,7 +84,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s ease-in-out;
+            transition: all 0.2s ease-in-out, opacity 0.3s ease, filter 0.3s ease; /* Thêm transition cho opacity và filter */
             font-size: 0.75em; /* Sử dụng 'em' để kế thừa từ root font-size */
             line-height: 1;
             min-height: 50px;
@@ -102,6 +102,18 @@
             transform: scale(1.05);
             box-shadow: 0 6px 15px rgba(0,0,0,0.2);
             z-index: 10;
+        }
+        /* Style for dimmed elements when a filter is active */
+        .element-cell.dimmed {
+            opacity: 0.2;
+            filter: grayscale(80%);
+            pointer-events: none; /* Disable interaction when dimmed */
+        }
+        /* Override dimmed for active elements */
+        .element-cell.active:not(.dimmed) {
+            opacity: 1;
+            filter: none;
+            pointer-events: auto;
         }
         .element-number {
             font-size: 0.6em; /* Sử dụng 'em' */
@@ -294,7 +306,7 @@
             text-decoration: underline;
         }
         #bottomSheetContent blockquote {
-            border-left: 4px solid #ccc;
+            border-left: 44px solid #ccc;
             padding-left: 15px;
             margin-left: 0;
             color: #666;
@@ -363,6 +375,81 @@
             font-weight: 500;
         }
 
+        .legend-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .legend-section {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            flex: 1 1 auto; /* Allow sections to grow and shrink */
+            min-width: 280px; /* Minimum width for each legend section */
+        }
+
+        .legend-section h3 {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #0056b3;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #e0f2fe;
+            text-align: center;
+        }
+
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .legend-item {
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            font-size: 0.9em;
+            font-weight: 500;
+            border: 1px solid transparent; /* Default transparent border */
+        }
+
+        /* Specific colors for legend items (can reuse element group colors) */
+        .legend-item[data-filter-value="Solid"] { background-color: #d8e2dc; color: #2a5a54; }
+        .legend-item[data-filter-value="Liquid"] { background-color: #cce9ff; color: #007bff; }
+        .legend-item[data-filter-value="Gas"] { background-color: #ffcccb; color: #dc3545; }
+        .legend-item[data-filter-value="UnknownState"] { background-color: #e0e0e0; color: #777; }
+
+        .legend-item[data-filter-value="alkali-metal"] { background-color: #ffcdd2; }
+        .legend-item[data-filter-value="alkaline-earth-metal"] { background-color: #ffe0b2; }
+        .legend-item[data-filter-value="transition-metal"] { background-color: #e3f2fd; }
+        .legend-item[data-filter-value="post-transition-metal"] { background-color: #b2dfdb; }
+        .legend-item[data-filter-value="metalloid"] { background-color: #cfd8dc; }
+        .legend-item[data-filter-value="other-nonmetal"] { background-color: #f0f4c3; }
+        .legend-item[data-filter-value="halogen"] { background-color: #d1c4e9; }
+        .legend-item[data-filter-value="noble-gas"] { background-color: #b3e5fc; }
+        .legend-item[data-filter-value="lanthanide"] { background-color: #fff9c4; }
+        .legend-item[data-filter-value="actinide"] { background-color: #ffccbc; }
+
+
+        .legend-item:hover {
+            opacity: 0.8;
+            transform: translateY(-1px);
+        }
+
+        .legend-item.selected-filter-item {
+            box-shadow: 0 0 0 3px #007bff; /* Highlight with a blue border/shadow */
+            transform: translateY(-2px);
+            font-weight: 700;
+        }
+
         .loading-spinner {
             display: flex;
             justify-content: center;
@@ -413,6 +500,34 @@
             <div>
                 <input type="number" id="kelvinInput" value="298.15" step="0.1">
                 <span>K</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="legend-container">
+        <div class="legend-section">
+            <h3>Trạng thái vật lý</h3>
+            <div class="legend-items" id="physicalStateLegend">
+                <div class="legend-item Solid" data-filter-type="state" data-filter-value="Solid">Rắn</div>
+                <div class="legend-item Liquid" data-filter-type="state" data-filter-value="Liquid">Lỏng</div>
+                <div class="legend-item Gas" data-filter-type="state" data-filter-value="Gas">Khí</div>
+                <div class="legend-item UnknownState" data-filter-type="state" data-filter-value="UnknownState">Chưa biết</div>
+            </div>
+        </div>
+
+        <div class="legend-section">
+            <h3>Loại nguyên tố</h3>
+            <div class="legend-items" id="elementTypeLegend">
+                <div class="legend-item alkali-metal" data-filter-type="group" data-filter-value="alkali-metal">Kim loại kiềm</div>
+                <div class="legend-item alkaline-earth-metal" data-filter-type="group" data-filter-value="alkaline-earth-metal">Kim loại kiềm thổ</div>
+                <div class="legend-item transition-metal" data-filter-type="group" data-filter-value="transition-metal">Kim loại chuyển tiếp</div>
+                <div class="legend-item post-transition-metal" data-filter-type="group" data-filter-value="post-transition-metal">Kim loại sau chuyển tiếp</div>
+                <div class="legend-item metalloid" data-filter-type="group" data-filter-value="metalloid">Á kim</div>
+                <div class="legend-item other-nonmetal" data-filter-type="group" data-filter-value="other-nonmetal">Phi kim khác</div>
+                <div class="legend-item halogen" data-filter-type="group" data-filter-value="halogen">Halogen</div>
+                <div class="legend-item noble-gas" data-filter-type="group" data-filter-value="noble-gas">Khí hiếm</div>
+                <div class="legend-item lanthanide" data-filter-type="group" data-filter-value="lanthanide">Họ Lanthan</div>
+                <div class="legend-item actinide" data-filter-type="group" data-filter-value="actinide">Họ Actini</div>
             </div>
         </div>
     </div>
@@ -497,7 +612,12 @@
         const fahrenheitInput = document.getElementById('fahrenheitInput');
         const kelvinInput = document.getElementById('kelvinInput');
 
+        // Các phần tử chú giải
+        const physicalStateLegend = document.getElementById('physicalStateLegend');
+        const elementTypeLegend = document.getElementById('elementTypeLegend');
+
         let currentTemperatureCelsius = parseFloat(celsiusInput.value); // Nhiệt độ hiện tại tính bằng Celsius
+        let activeFilter = { type: null, value: null, element: null }; // Để theo dõi bộ lọc đang hoạt động
 
         // Hàm cập nhật trạng thái hiển thị trên giao diện
         function updateStatus(type, message) {
@@ -742,7 +862,7 @@
             }
         }
 
-        // Hàm cập nhật màu sắc các ô nguyên tố dựa trên nhiệt độ
+        // Hàm cập nhật màu sắc các ô nguyên tố dựa trên nhiệt độ và áp dụng bộ lọc hiện tại
         function updateElementStates() {
             elements.forEach(element => {
                 const cell = document.querySelector(`[data-symbol="${element.symbol}"]`);
@@ -750,11 +870,13 @@
                     // Xóa tất cả các lớp trạng thái cũ
                     cell.classList.remove('Solid', 'Liquid', 'Gas', 'UnknownState');
 
-                    // Thêm lớp trạng thái mới
+                    // Thêm lớp trạng thái mới dựa trên nhiệt độ
                     const state = getPhysicalState(currentTemperatureCelsius, element.melting_point_celsius, element.boiling_point_celsius);
                     cell.classList.add(state);
                 }
             });
+            // Sau khi cập nhật trạng thái, áp dụng lại bộ lọc hiện có
+            applyCurrentFilter();
         }
 
         // Hàm chuyển đổi nhiệt độ
@@ -810,18 +932,92 @@
             updateElementStates();
         }
 
+        // Hàm áp dụng bộ lọc vào các ô nguyên tố
+        function applyFilter(filterType, filterValue, clickedLegendItem) {
+            const allElementCells = document.querySelectorAll('.element-cell');
+            const allLegendItems = document.querySelectorAll('.legend-item');
+
+            // Xóa highlight của tất cả các mục chú giải
+            allLegendItems.forEach(item => item.classList.remove('selected-filter-item'));
+
+            // Nếu bộ lọc này đã được chọn, hãy hủy chọn nó
+            if (activeFilter.type === filterType && activeFilter.value === filterValue) {
+                activeFilter = { type: null, value: null, element: null };
+            } else {
+                activeFilter = { type: filterType, value: filterValue, element: clickedLegendItem };
+                // Highlight mục chú giải được chọn
+                if (clickedLegendItem) {
+                    clickedLegendItem.classList.add('selected-filter-item');
+                }
+            }
+            
+            applyCurrentFilter(); // Áp dụng bộ lọc mới (hoặc hủy)
+        }
+
+        // Hàm áp dụng bộ lọc hiện tại (dựa trên biến activeFilter)
+        function applyCurrentFilter() {
+            const allElementCells = document.querySelectorAll('.element-cell');
+
+            allElementCells.forEach(cell => {
+                // Đảm bảo không làm mờ các ô placeholder
+                if (cell.classList.contains('lanthanide-placeholder') || cell.classList.contains('actinide-placeholder')) {
+                    cell.classList.remove('dimmed');
+                    cell.style.pointerEvents = 'auto';
+                    return;
+                }
+
+                if (activeFilter.type === null) {
+                    // Không có bộ lọc nào hoạt động, hiển thị tất cả
+                    cell.classList.remove('dimmed');
+                    cell.style.pointerEvents = 'auto'; // Kích hoạt lại tương tác
+                } else {
+                    let matches = false;
+                    if (activeFilter.type === 'state') {
+                        // Kiểm tra xem ô có lớp trạng thái phù hợp với bộ lọc không
+                        matches = cell.classList.contains(activeFilter.value);
+                    } else if (activeFilter.type === 'group') {
+                        // Kiểm tra xem ô có lớp nhóm phù hợp với bộ lọc không
+                        matches = cell.classList.contains(activeFilter.value);
+                    }
+
+                    if (matches) {
+                        cell.classList.remove('dimmed');
+                        cell.style.pointerEvents = 'auto'; // Kích hoạt lại tương tác
+                    } else {
+                        cell.classList.add('dimmed');
+                        cell.style.pointerEvents = 'none'; // Vô hiệu hóa tương tác
+                    }
+                }
+            });
+        }
+
         // Gắn sự kiện cho thanh trượt và các ô input nhiệt độ
         temperatureRange.addEventListener('input', () => {
             currentTemperatureCelsius = parseFloat(temperatureRange.value);
             celsiusInput.value = currentTemperatureCelsius.toFixed(2);
             fahrenheitInput.value = convertTemperature(currentTemperatureCelsius, 'C', 'F').toFixed(2);
             kelvinInput.value = convertTemperature(currentTemperatureCelsius, 'C', 'K').toFixed(2);
-            updateElementStates();
+            updateElementStates(); // Cập nhật trạng thái và áp dụng lại bộ lọc
         });
 
         celsiusInput.addEventListener('change', () => updateTemperatureInputs('celsiusInput'));
         fahrenheitInput.addEventListener('change', () => updateTemperatureInputs('fahrenheitInput'));
         kelvinInput.addEventListener('change', () => updateTemperatureInputs('kelvinInput'));
+
+        // Gắn sự kiện cho các mục chú giải
+        physicalStateLegend.addEventListener('click', (event) => {
+            const item = event.target.closest('.legend-item');
+            if (item) {
+                applyFilter(item.dataset.filterType, item.dataset.filterValue, item);
+            }
+        });
+
+        elementTypeLegend.addEventListener('click', (event) => {
+            const item = event.target.closest('.legend-item');
+            if (item) {
+                applyFilter(item.dataset.filterType, item.dataset.filterValue, item);
+            }
+        });
 
 
         // Tạo bảng tuần hoàn trên giao diện
@@ -926,6 +1122,11 @@
             if (element.isPlaceholder) {
                 return;
             }
+
+            // Hủy bỏ mọi bộ lọc đang hoạt động khi một nguyên tố được nhấp
+            activeFilter = { type: null, value: null, element: null };
+            document.querySelectorAll('.selected-filter-item').forEach(item => item.classList.remove('selected-filter-item'));
+            applyCurrentFilter(); // Loại bỏ hiệu ứng làm mờ
 
             document.querySelectorAll('.element-cell').forEach(cell => {
                 cell.classList.remove('active');
