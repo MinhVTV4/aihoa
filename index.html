@@ -835,7 +835,7 @@
                 }
                 
                 const ai = getAI(app, { backend: new GoogleAIBackend() });
-                model = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" });
+                model = getGenerativeModel(ai, { model: "gemini-2.5-flash" });
                 console.log("Thể hiện Generative Model đã tạo!");
                 updateStatus('success-text', 'Mô hình AI đã sẵn sàng. Hãy chọn một nguyên tố!');
             } catch(e) {
