@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bảng Tuần Hoàn Tương Tác - Giao diện mới</title>
+    <title>Bảng Tuần Hoàn Tương Tác - AI hoạt động</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Marked.js CDN -->
@@ -24,7 +24,7 @@
             justify-content: space-between;
             align-items: center;
             max-width: 1200px;
-            margin: 0 auto 2rem auto;
+            margin: 0 auto 1rem auto;
             flex-wrap: wrap;
             gap: 1.5rem;
         }
@@ -81,19 +81,32 @@
             font-weight: 500;
         }
         .container {
-            max-width: 1400px; /* Increased width for better layout */
+            max-width: 1400px;
             width: 100%;
             margin: auto;
         }
+        
+        .status-message {
+            text-align: center;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: #555;
+            height: 2rem;
+            transition: color 0.3s ease;
+        }
+        .status-message.error-text { color: #dc3545; }
+        .status-message.success-text { color: #28a745; }
+        .status-message.info-text { color: #0056b3; }
 
-        /* NEW Legend Container */
+
         .legend-container {
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
             gap: 0.8rem;
             max-width: 1200px;
-            margin: -1rem auto 2rem auto;
+            margin: 0 auto 2rem auto;
         }
         .legend-item {
             padding: 0.6rem 1.2rem;
@@ -115,7 +128,7 @@
 
         .periodic-table-wrapper {
             display: grid;
-            grid-template-columns: 2.5rem repeat(18, 1fr); /* Add column for period numbers */
+            grid-template-columns: 2.5rem repeat(18, 1fr);
             gap: 4px;
         }
         .period-number {
@@ -134,8 +147,6 @@
         }
 
         .element-cell {
-            background-color: #e3f2fd; /* Default color */
-            border: 1px solid #a7d9ff;
             border-radius: 4px;
             padding: 0.5rem 0.2rem;
             display: flex;
@@ -159,21 +170,21 @@
             filter: grayscale(80%);
             pointer-events: none;
         }
-        .element-header {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            padding: 0 0.3rem;
-        }
         .element-number {
             font-size: 1.1rem;
             font-weight: 500;
+            position: absolute;
+            top: 4px;
+            left: 4px;
         }
         .element-symbol {
             font-size: 1.8rem;
             font-weight: 700;
             margin-top: 0.2rem;
             flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .element-name, .element-mass {
             font-size: 1rem;
@@ -182,29 +193,26 @@
 
         /* Symbol colors for physical state */
         .state-solid { color: #000000; }
-        .state-liquid { color: #008000; } /* Green */
-        .state-gas { color: #ff0000; } /* Red */
-        .state-unknown { color: #888888; } /* Gray */
+        .state-liquid { color: #008000; }
+        .state-gas { color: #ff0000; }
+        .state-unknown { color: #888888; }
 
         /* Background colors for element groups */
-        .alkali-metal { background-color: #ffcdd2; border-color: #e57373; }
-        .alkaline-earth-metal { background-color: #ffe0b2; border-color: #ffb74d; }
-        .transition-metal { background-color: #e1f5fe; border-color: #4fc3f7; }
-        .post-transition-metal { background-color: #b2dfdb; border-color: #4db6ac; }
-        .metalloid { background-color: #cfd8dc; border-color: #90a4ae; }
-        .other-nonmetal { background-color: #f0f4c3; border-color: #dce775; }
-        .halogen { background-color: #d1c4e9; border-color: #9575cd; }
-        .noble-gas { background-color: #b3e5fc; border-color: #4dd0e1; }
-        .lanthanide { background-color: #fff9c4; border-color: #fff176; }
-        .actinide { background-color: #ffccbc; border-color: #ff8a65; }
+        .alkali-metal { background-color: #ffcdd2; border: 1px solid #e57373; }
+        .alkaline-earth-metal { background-color: #ffe0b2; border: 1px solid #ffb74d; }
+        .transition-metal { background-color: #e1f5fe; border: 1px solid #4fc3f7; }
+        .post-transition-metal { background-color: #b2dfdb; border: 1px solid #4db6ac; }
+        .metalloid { background-color: #cfd8dc; border: 1px solid #90a4ae; }
+        .other-nonmetal { background-color: #f0f4c3; border: 1px solid #dce775; }
+        .halogen { background-color: #d1c4e9; border: 1px solid #9575cd; }
+        .noble-gas { background-color: #b3e5fc; border: 1px solid #4dd0e1; }
+        .lanthanide { background-color: #fff9c4; border: 1px solid #fff176; }
+        .actinide { background-color: #ffccbc; border: 1px solid #ff8a65; }
         
-        .empty-cell {
-            visibility: hidden;
-            pointer-events: none;
-        }
+        .empty-cell { visibility: hidden; pointer-events: none; }
         .lanthanide-ref, .actinide-ref {
-            background-color: #d1eaff; /* Lighter blue */
-            border-color: #a6d4fa;
+            background-color: #d1eaff;
+            border: 1px solid #a6d4fa;
             font-weight: bold;
             display: flex;
             align-items: center;
@@ -213,30 +221,22 @@
         }
         
         /* Bottom F-Block */
-        .f-block-wrapper {
-            margin: 2rem auto;
-            max-width: 1060px; /* Align with main table width */
-        }
-        .f-block-grid {
-            display: grid;
-            grid-template-columns: 2.5rem 2.7rem 1fr; /* Period, Spacer, Grid */
-            gap: 4px;
-            align-items: center;
-        }
-        .f-block-table {
-            display: grid;
-            grid-template-columns: repeat(15, 1fr);
-            gap: 4px;
-        }
+        .f-block-wrapper { margin: 2rem auto; max-width: 1060px; }
+        .f-block-grid { display: grid; grid-template-columns: 2.5rem 2.7rem 1fr; gap: 4px; align-items: center; }
+        .f-block-table { display: grid; grid-template-columns: repeat(15, 1fr); gap: 4px; }
     
-        /* Bottom Sheet (unchanged from previous version) */
+        /* Bottom Sheet */
         #bottomSheetOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; display: none; }
         #bottomSheet { position: fixed; bottom: 0; left: 0; width: 100%; max-height: 80vh; background-color: #ffffff; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -8px 20px rgba(0,0,0,0.2); z-index: 1001; transform: translateY(100%); transition: transform 0.3s ease-out; display: flex; flex-direction: column; }
         #bottomSheet.active { transform: translateY(0); }
         #bottomSheetContent { padding: 25px; overflow-y: auto; flex-grow: 1; }
-        #bottomSheet .close-button { position: sticky; top: 0; align-self: flex-end; margin-right: 15px; margin-top: 15px; background: #e0e0e0; border: none; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; z-index: 1002; }
+        #bottomSheet .close-button { position: sticky; top: 0; align-self: flex-end; margin: 15px 15px 0 0; background: #e0e0e0; border: none; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; z-index: 1002; }
         #bottomSheet .close-button:hover { background-color: #d0d0d0; }
-        #bottomSheetContent h3 { font-size: 2rem; font-weight: 700; color: #007bff; margin-bottom: 15px; }
+        #bottomSheetContent h3 { font-size: 2.2rem; font-weight: 700; color: #007bff; margin-bottom: 15px; }
+        
+        .loading-spinner { display: flex; justify-content: center; align-items: center; min-height: 100px; }
+        .spinner { border: 4px solid rgba(0, 123, 255, 0.3); border-left-color: #007bff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -254,31 +254,27 @@
         </div>
     </div>
     
-    <!-- NEW Legend Container -->
+    <div id="statusMessage" class="status-message"></div>
     <div id="legend-container" class="legend-container"></div>
 
     <div class="container">
-        <div class="periodic-table-wrapper" id="periodicTableWrapper">
-            <!-- Populated by JS -->
-        </div>
-
+        <div class="periodic-table-wrapper" id="periodicTableWrapper"></div>
         <div class="f-block-wrapper">
-            <div class="f-block-grid" id="lanthanidesBlock">
-                <!-- Populated by JS -->
-            </div>
-            <div class="f-block-grid mt-2" id="actinidesBlock">
-                <!-- Populated by JS -->
-            </div>
+            <div class="f-block-grid" id="lanthanidesBlock"></div>
+            <div class="f-block-grid mt-2" id="actinidesBlock"></div>
         </div>
     </div>
     
-    <!-- Bottom Sheet -->
     <div id="bottomSheetOverlay"></div>
     <div id="bottomSheet">
         <button class="close-button" id="closeBottomSheet">X</button>
         <div id="bottomSheetContent">
             <h3 id="detailElementName">Chọn một nguyên tố</h3>
             <div id="geminiDetailContent"></div>
+            <div id="geminiLoading" class="loading-spinner hidden">
+                <div class="spinner"></div>
+                <p class="ml-4 text-blue-600">Đang hỏi Gemini AI...</p>
+            </div>
         </div>
     </div>
 
@@ -300,7 +296,7 @@
         let app, auth, model;
         let elements = [];
         let currentTemperatureKelvin = 298;
-        let activeGroupFilter = null; // To track the current group filter
+        let activeGroupFilter = null;
 
         const dom = {
             tableWrapper: document.getElementById('periodicTableWrapper'),
@@ -316,15 +312,18 @@
             closeBottomSheetButton: document.getElementById('closeBottomSheet'),
             detailElementName: document.getElementById('detailElementName'),
             geminiDetailContent: document.getElementById('geminiDetailContent'),
+            geminiLoading: document.getElementById('geminiLoading'),
+            statusMessage: document.getElementById('statusMessage'),
         };
         
-        // --- DATA AUGMENTATION ---
         const atomicMasses = { 1:1.008,2:4.0026,3:6.94,4:9.0122,5:10.81,6:12.011,7:14.007,8:15.999,9:18.998,10:20.18,11:22.99,12:24.305,13:26.982,14:28.085,15:30.974,16:32.06,17:35.45,18:39.948,19:39.098,20:40.078,21:44.956,22:47.867,23:50.942,24:51.996,25:54.938,26:55.845,27:58.933,28:58.693,29:63.546,30:65.38,31:69.723,32:72.63,33:74.922,34:78.971,35:79.904,36:83.798,37:85.468,38:87.62,39:88.906,40:91.224,41:92.906,42:95.96,43:98,44:101.07,45:102.91,46:106.42,47:107.87,48:112.41,49:114.82,50:118.71,51:121.76,52:127.6,53:126.9,54:131.29,55:132.91,56:137.33,57:138.91,58:140.12,59:140.91,60:144.24,61:145,62:150.36,63:151.96,64:157.25,65:158.93,66:162.5,67:164.93,68:167.26,69:168.93,70:173.05,71:174.97,72:178.49,73:180.95,74:183.84,75:186.21,76:190.23,77:192.22,78:195.08,79:196.97,80:200.59,81:204.38,82:207.2,83:208.98,84:209,85:210,86:222,87:223,88:226,89:227,90:232.04,91:231.04,92:238.03,93:237,94:244,95:243,96:247,97:247,98:251,99:252,100:257,101:258,102:259,103:266,104:267,105:268,106:269,107:270,108:269,109:278,110:281,111:282,112:285,113:286,114:289,115:289,116:293,117:294,118:294 };
         function augmentElementData(elements) {
-            return elements.map(el => ({
-                ...el,
-                atomic_mass: atomicMasses[el.number] || 0
-            }));
+            return elements.map(el => ({ ...el, atomic_mass: atomicMasses[el.number] || 0 }));
+        }
+
+        function updateStatus(type, message) {
+            dom.statusMessage.className = `status-message ${type}`;
+            dom.statusMessage.textContent = message;
         }
 
         function createCell(element) {
@@ -333,16 +332,8 @@
             cell.dataset.symbol = element.symbol;
             cell.dataset.name = element.name;
             cell.dataset.number = element.number;
-            cell.dataset.group = element.group; // Add group data for filtering
-
-            cell.innerHTML = `
-                <div class="element-header">
-                    <span class="element-number">${element.number}</span>
-                </div>
-                <div class="element-symbol">${element.symbol}</div>
-                <div class="element-name">${element.name}</div>
-                <div class="element-mass">${element.atomic_mass > 0 ? element.atomic_mass.toFixed(3) : ''}</div>
-            `;
+            cell.dataset.group = element.group;
+            cell.innerHTML = `<span class="element-number">${element.number}</span><div class="element-symbol">${element.symbol}</div><div class="element-name">${element.name}</div><div class="element-mass">${element.atomic_mass > 0 ? element.atomic_mass.toFixed(3) : ''}</div>`;
             cell.addEventListener('click', () => handleElementClick(element));
             return cell;
         }
@@ -364,7 +355,6 @@
                 if (!cell) return;
                 const symbolDiv = cell.querySelector('.element-symbol');
                 const state = getPhysicalState(currentTemperatureKelvin, element.melting_point_celsius, element.boiling_point_celsius);
-                
                 symbolDiv.classList.remove('state-solid', 'state-liquid', 'state-gas', 'state-unknown');
                 symbolDiv.classList.add(`state-${state}`);
             });
@@ -372,27 +362,17 @@
 
         function applyGroupFilter() {
             document.querySelectorAll('.element-cell').forEach(cell => {
-                if (!activeGroupFilter) {
-                    cell.classList.remove('dimmed');
-                } else {
-                    if (cell.dataset.group === activeGroupFilter) {
-                        cell.classList.remove('dimmed');
-                    } else {
-                        cell.classList.add('dimmed');
-                    }
-                }
+                cell.classList.toggle('dimmed', activeGroupFilter && cell.dataset.group !== activeGroupFilter);
             });
         }
         
         function handleSearch() {
             const query = dom.searchInput.value.toLowerCase().trim();
-             // Clear group filter when searching
             if(activeGroupFilter) {
                 activeGroupFilter = null;
                 document.querySelector('.legend-item.selected')?.classList.remove('selected');
                 applyGroupFilter();
             }
-
             document.querySelectorAll('.element-cell').forEach(cell => {
                 if (!query) {
                     cell.classList.remove('dimmed');
@@ -401,29 +381,18 @@
                 const name = cell.dataset.name.toLowerCase();
                 const symbol = cell.dataset.symbol.toLowerCase();
                 const number = cell.dataset.number;
-
-                if (name.includes(query) || symbol.startsWith(query) || number === query) {
-                    cell.classList.remove('dimmed');
-                } else {
-                    cell.classList.add('dimmed');
-                }
+                cell.classList.toggle('dimmed', !(name.includes(query) || symbol.startsWith(query) || number === query));
             });
         }
         
         function createTopLegend() {
             const legendData = [
-                { class: 'alkali-metal', text: 'Kim loại kiềm' }, 
-                { class: 'alkaline-earth-metal', text: 'Kim loại kiềm thổ' },
-                { class: 'transition-metal', text: 'Kim loại chuyển tiếp' },
-                { class: 'post-transition-metal', text: 'Kim loại sau CT' },
-                { class: 'lanthanide', text: 'Họ Lantan' }, 
-                { class: 'actinide', text: 'Họ Actini' },
-                { class: 'metalloid', text: 'Á kim' },
-                { class: 'other-nonmetal', text: 'Phi kim khác' },
-                { class: 'halogen', text: 'Halogen' }, 
-                { class: 'noble-gas', text: 'Khí hiếm' },
+                { class: 'alkali-metal', text: 'Kim loại kiềm' }, { class: 'alkaline-earth-metal', text: 'Kim loại kiềm thổ' },
+                { class: 'transition-metal', text: 'Kim loại chuyển tiếp' }, { class: 'post-transition-metal', text: 'Kim loại sau CT' },
+                { class: 'lanthanide', text: 'Họ Lantan' }, { class: 'actinide', text: 'Họ Actini' }, { class: 'metalloid', text: 'Á kim' },
+                { class: 'other-nonmetal', text: 'Phi kim khác' }, { class: 'halogen', text: 'Halogen' }, { class: 'noble-gas', text: 'Khí hiếm' },
             ];
-            dom.legendContainer.innerHTML = ''; // Clear first
+            dom.legendContainer.innerHTML = '';
             legendData.forEach(item => {
                 const legendItem = document.createElement('div');
                 legendItem.className = `legend-item ${item.class}`;
@@ -436,67 +405,54 @@
         function handleLegendClick(event) {
             const clickedItem = event.target.closest('.legend-item');
             if (!clickedItem) return;
-
-            // Clear search when filtering
             dom.searchInput.value = '';
             handleSearch();
-
             const group = clickedItem.dataset.group;
-            
-            // If the same filter is clicked again, toggle it off
             if (activeGroupFilter === group) {
                 activeGroupFilter = null;
                 clickedItem.classList.remove('selected');
             } else {
-                // Remove selection from the old item
                 document.querySelector('.legend-item.selected')?.classList.remove('selected');
-                // Set new filter and add selection
                 activeGroupFilter = group;
                 clickedItem.classList.add('selected');
             }
             applyGroupFilter();
         }
 
-        function createPeriodicTable() {
+        function createUIGrids() {
             dom.tableWrapper.innerHTML = '';
-            
-            // Create a grid representation
             const grid = Array(7).fill(null).map(() => Array(18).fill(null));
             elements.forEach(el => {
-                if (el.row <= 7 && el.col <= 18) {
-                    if (el.group === 'lanthanide') {
-                         if (!grid[5][2]) grid[5][2] = { type: 'ref', class: 'lanthanide-ref', text: '57-71' };
-                         return;
-                    }
-                    if (el.group === 'actinide') {
-                         if (!grid[6][2]) grid[6][2] = { type: 'ref', class: 'actinide-ref', text: '89-103' };
-                         return;
-                    }
-                    grid[el.row - 1][el.col - 1] = { type: 'element', data: el };
+                if (el.row > 7 || el.col > 18) return;
+                if (el.group === 'lanthanide') {
+                    if (!grid[5][2]) grid[5][2] = { type: 'ref', class: 'lanthanide-ref', text: '57-71' };
+                    return;
                 }
+                if (el.group === 'actinide') {
+                    if (!grid[6][2]) grid[6][2] = { type: 'ref', class: 'actinide-ref', text: '89-103' };
+                    return;
+                }
+                grid[el.row - 1][el.col - 1] = { type: 'element', data: el };
             });
 
-            // Render the grid
             for (let r = 0; r < 7; r++) {
                 const periodNum = document.createElement('div');
                 periodNum.className = 'period-number';
                 periodNum.textContent = r + 1;
                 dom.tableWrapper.appendChild(periodNum);
-                
                 const rowGrid = document.createElement('div');
                 rowGrid.className = 'periodic-table-grid';
                 rowGrid.style.gridRow = r + 1;
-
                 for (let c = 0; c < 18; c++) {
                     const cellData = grid[r][c];
                     if (cellData) {
                         if (cellData.type === 'element') {
-                            rowGrid.appendChild(createCell(cellData.data));
-                        } else if(cellData.type === 'ref') {
-                            const refCell = document.createElement('div');
-                            refCell.className = `element-cell ${cellData.class}`;
-                            refCell.textContent = cellData.text;
-                            rowGrid.appendChild(refCell);
+                             rowGrid.appendChild(createCell(cellData.data));
+                        } else {
+                             const refCell = document.createElement('div');
+                             refCell.className = `element-cell ${cellData.class}`;
+                             refCell.textContent = cellData.text;
+                             rowGrid.appendChild(refCell);
                         }
                     } else {
                        const emptyCell = document.createElement('div');
@@ -506,19 +462,11 @@
                 }
                 dom.tableWrapper.appendChild(rowGrid);
             }
-        }
-        
-        function createFBlock() {
-            dom.lanthanidesBlock.innerHTML = `
-                <div class="period-number">6</div> <div></div>
-                <div class="f-block-table" id="lanthanides-inner-grid"></div>`;
-            dom.actinidesBlock.innerHTML = `
-                <div class="period-number">7</div> <div></div>
-                <div class="f-block-table" id="actinides-inner-grid"></div>`;
-
+            // Create F-Block
+            dom.lanthanidesBlock.innerHTML = `<div class="period-number">6</div> <div></div> <div class="f-block-table" id="lanthanides-inner-grid"></div>`;
+            dom.actinidesBlock.innerHTML = `<div class="period-number">7</div> <div></div> <div class="f-block-table" id="actinides-inner-grid"></div>`;
             const lanthGrid = document.getElementById('lanthanides-inner-grid');
             const actiGrid = document.getElementById('actinides-inner-grid');
-
             elements.filter(el => el.group === 'lanthanide').sort((a,b) => a.number - b.number).forEach(el => lanthGrid.appendChild(createCell(el)));
             elements.filter(el => el.group === 'actinide').sort((a,b) => a.number - b.number).forEach(el => actiGrid.appendChild(createCell(el)));
         }
@@ -527,75 +475,102 @@
             dom.bottomSheet.classList.add('active');
             dom.bottomSheetOverlay.style.display = 'block';
             dom.detailElementName.textContent = `${element.name} (${element.symbol})`;
-            dom.geminiDetailContent.innerHTML = `<p class="text-gray-500">Đang yêu cầu Gemini AI...</p>`;
-            
+            dom.geminiDetailContent.innerHTML = '';
+            dom.geminiLoading.classList.remove('hidden');
+
             if (!model) {
-                 dom.geminiDetailContent.innerHTML = `<p class="text-red-500">Lỗi: Mô hình AI chưa được khởi tạo.</p>`;
+                 dom.geminiDetailContent.innerHTML = `<p class="text-red-500 mt-4">Lỗi: Mô hình AI chưa được khởi tạo. Vui lòng đợi thông báo "AI đã sẵn sàng" hoặc kiểm tra lại.</p>`;
+                 dom.geminiLoading.classList.add('hidden');
                  return;
             }
+
             try {
-                const promptText = `Cung cấp thông tin chi tiết về nguyên tố hóa học ${element.name} (ký hiệu ${element.symbol}, số nguyên tử ${element.number}). Vui lòng bao gồm: lịch sử phát hiện, cấu hình electron, và các ứng dụng phổ biến. Trả lời bằng tiếng Việt, định dạng Markdown.`;
+                const promptText = `Cung cấp thông tin chi tiết về nguyên tố hóa học ${element.name} (ký hiệu ${element.symbol}, số nguyên tử ${element.number}). Vui lòng bao gồm:\n- Cấu hình electron\n- Độ âm điện\n- Trạng thái ở điều kiện tiêu chuẩn\n- Điểm nóng chảy và điểm sôi (Celsius)\n- Lịch sử phát hiện (ngắn gọn)\n- Ứng dụng phổ biến (dạng danh sách)\nVui lòng trả lời dưới dạng văn bản có cấu trúc với các mục rõ ràng sử dụng định dạng Markdown. Sử dụng ngôn ngữ tiếng Việt.`;
+                updateStatus('info-text', `Đang hỏi Gemini về ${element.name}...`);
                 const result = await model.generateContent(promptText);
                 const text = result.response.text();
-                dom.geminiDetailContent.innerHTML = marked.parse(text);
+
+                const finalHTML = `<p><strong>Số nguyên tử:</strong> ${element.number}</p><p><strong>Ký hiệu:</strong> ${element.symbol}</p><p><strong>Khối lượng nguyên tử:</strong> ${element.atomic_mass.toFixed(3)}</p><hr class="my-4 border-t border-blue-200"><div class="text-gray-800 text-base">${marked.parse(text)}</div>`;
+                dom.geminiDetailContent.innerHTML = finalHTML;
+                updateStatus('success-text', `Đã nhận thông tin về ${element.name}.`);
             } catch (error) {
-                console.error("Gemini API Error:", error);
-                dom.geminiDetailContent.innerHTML = `<p class="text-red-500">Lỗi khi lấy thông tin từ Gemini AI.</p>`;
+                console.error("Lỗi khi gọi Gemini API:", error);
+                const errorHTML = `<p><strong>Số nguyên tử:</strong> ${element.number}</p><p><strong>Ký hiệu:</strong> ${element.symbol}</p><p><strong>Khối lượng nguyên tử:</strong> ${element.atomic_mass.toFixed(3)}</p><hr class="my-4 border-t border-red-200"><p class="text-red-500 mt-4"><strong>Lỗi khi lấy thông tin từ Gemini AI:</strong><br>${error.message}</p>`;
+                dom.geminiDetailContent.innerHTML = errorHTML;
+                updateStatus('error-text', `Lỗi Gemini API.`);
+            } finally {
+                dom.geminiLoading.classList.add('hidden');
+                setTimeout(() => updateStatus('success-text', 'AI Model đã sẵn sàng. Hãy chọn một nguyên tố!'), 4000);
             }
         }
         
+        async function initializeFirebaseAndAI() {
+            try {
+                updateStatus('info-text', 'Đang khởi tạo Firebase & AI...');
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                
+                let authSuccess = false;
+                if (initialAuthToken) {
+                    try {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        authSuccess = true;
+                        console.log("Đăng nhập bằng custom token thành công.");
+                    } catch (tokenError) {
+                        console.error("Lỗi custom token (sẽ thử đăng nhập ẩn danh):", tokenError);
+                        // Fallback to anonymous sign-in
+                    }
+                }
+
+                if (!authSuccess) {
+                    try {
+                       await signInAnonymously(auth);
+                       authSuccess = true;
+                       console.log("Đăng nhập ẩn danh thành công.");
+                    } catch (anonymousError) {
+                        console.error("Lỗi đăng nhập ẩn danh:", anonymousError);
+                        throw anonymousError; // Throw error to be caught by the outer catch
+                    }
+                }
+                
+                const ai = getAI(app, { backend: new GoogleAIBackend() });
+                model = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" });
+                console.log("Generative Model instance đã tạo!");
+                updateStatus('success-text', 'AI Model đã sẵn sàng. Hãy chọn một nguyên tố!');
+            } catch(e) {
+                console.error("Lỗi cuối cùng khi khởi tạo AI:", e);
+                updateStatus('error-text', `Lỗi khởi tạo AI. Chức năng AI sẽ không hoạt động.`);
+            }
+        }
+
         async function main() {
             try {
+                updateStatus('info-text', 'Đang tải dữ liệu bảng tuần hoàn...');
                 const response = await fetch('https://minhvtv4.github.io/aihoa/elements.json');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const rawElements = await response.json();
                 elements = augmentElementData(rawElements);
-
                 createTopLegend();
-                createPeriodicTable();
-                createFBlock();
+                createUIGrids();
                 updateElementStates();
             } catch (error) {
-                console.error("Failed to load initial data:", error);
+                console.error("Lỗi khi tải dữ liệu ban đầu:", error);
                 document.body.innerHTML = `<p class="text-red-500 text-center mt-10">Không thể tải dữ liệu bảng tuần hoàn. Vui lòng thử lại.</p>`;
+                updateStatus('error-text', 'Tải dữ liệu thất bại.');
+                return;
             }
             
-            // Setup Event Listeners
+            // Setup Listeners
             dom.searchInput.addEventListener('input', handleSearch);
             dom.legendContainer.addEventListener('click', handleLegendClick);
-            dom.tempMinusBtn.addEventListener('click', () => {
-                currentTemperatureKelvin = Math.max(0, currentTemperatureKelvin - 10);
-                updateElementStates();
-            });
-            dom.tempPlusBtn.addEventListener('click', () => {
-                currentTemperatureKelvin += 10;
-                updateElementStates();
-            });
-            dom.kelvinInput.addEventListener('change', () => {
-                currentTemperatureKelvin = parseFloat(dom.kelvinInput.value) || 298;
-                updateElementStates();
-            });
-            dom.closeBottomSheetButton.addEventListener('click', () => {
-                dom.bottomSheet.classList.remove('active');
-                dom.bottomSheetOverlay.style.display = 'none';
-            });
+            dom.tempMinusBtn.addEventListener('click', () => { currentTemperatureKelvin = Math.max(0, currentTemperatureKelvin - 10); updateElementStates(); });
+            dom.tempPlusBtn.addEventListener('click', () => { currentTemperatureKelvin += 10; updateElementStates(); });
+            dom.kelvinInput.addEventListener('change', () => { currentTemperatureKelvin = parseFloat(dom.kelvinInput.value) || 298; updateElementStates(); });
+            dom.closeBottomSheetButton.addEventListener('click', () => { dom.bottomSheet.classList.remove('active'); dom.bottomSheetOverlay.style.display = 'none'; });
             dom.bottomSheetOverlay.addEventListener('click', () => dom.closeBottomSheetButton.click());
 
-            // Initialize Firebase (optional, for AI features)
-            try {
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                const ai = getAI(app, { backend: new GoogleAIBackend() });
-                model = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" });
-                console.log("Firebase & AI Model initialized.");
-            } catch(e) {
-                console.error("Firebase/AI init failed:", e);
-            }
+            // Initialize the backend after UI is ready
+            await initializeFirebaseAndAI();
         }
 
         document.addEventListener('DOMContentLoaded', main);
