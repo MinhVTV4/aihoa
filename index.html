@@ -146,6 +146,7 @@
         
         .loading-spinner { display: flex; justify-content: center; align-items: center; min-height: 100px; }
         .spinner { border: 4px solid rgba(0, 123, 255, 0.3); border-left-color: #007bff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        .spinner-small { width: 20px; height: 20px; border-width: 2px; } /* Smaller spinner for trend explanation */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* Tooltip Styles */
@@ -283,6 +284,17 @@
                 <label>K</label>
             </div>
         </div>
+
+        <!-- Trend Explanation Container -->
+        <div id="trendExplanationContainer" class="hidden mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+            <div id="trendExplanationContent" class="font-medium"></div>
+            <!-- Loading spinner for explanation is now hidden by default and not used -->
+            <!-- <div id="trendExplanationLoading" class="loading-spinner hidden mt-2">
+                <div class="spinner spinner-small"></div>
+                <p class="ml-2 text-blue-600 text-xs">Đang hỏi Gemini AI về xu hướng...</p>
+            </div> -->
+        </div>
+        
         <div id="trend-legend-container" class="trend-legend-container hidden"></div>
     </div>
     
@@ -338,7 +350,7 @@
         };
         
         // --- GLOBAL STATE ---
-        let app, auth, model;
+        let app, auth, model; // model is still needed for element details, but not for trends
         let elements = [];
         let currentTemperatureKelvin = 298;
         let activeGroupFilter = null;
@@ -362,6 +374,26 @@
             geminiLoading: document.getElementById('geminiLoading'),
             statusMessage: document.getElementById('statusMessage'),
             elementTooltip: document.getElementById('elementTooltip'),
+            // New DOM elements for trend explanation
+            trendExplanationContainer: document.getElementById('trendExplanationContainer'),
+            trendExplanationContent: document.getElementById('trendExplanationContent'),
+            // trendExplanationLoading is no longer needed but kept as comment for context
+            // trendExplanationLoading: document.getElementById('trendExplanationLoading'),
+        };
+
+        // Map trend data-trend to Vietnamese display names
+        const trendDisplayNames = {
+            electronegativity: 'độ âm điện',
+            ionizationEnergy: 'năng lượng ion hóa',
+            atomicRadius: 'bán kính nguyên tử',
+            none: 'tắt'
+        };
+
+        // Hardcoded trend explanations
+        const hardcodedTrendExplanations = {
+            electronegativity: `Độ âm điện là khả năng hút electron của nguyên tử trong liên kết hóa học. Xu hướng này tăng dần từ trái sang phải trong một chu kỳ do tăng lực hút hạt nhân và giảm dần từ trên xuống dưới trong một nhóm do tăng số lớp electron và hiệu ứng chắn. Ví dụ: Flo (F) là nguyên tố có độ âm điện cao nhất.`,
+            ionizationEnergy: `Năng lượng ion hóa là năng lượng cần thiết để tách một electron ra khỏi nguyên tử ở trạng thái khí. Xu hướng này tăng dần từ trái sang phải trong một chu kỳ (electron bị giữ chặt hơn) và giảm dần từ trên xuống dưới trong một nhóm (bán kính nguyên tử và hiệu ứng chắn tăng, giảm lực hút hạt nhân). Ví dụ: Heli (He) có năng lượng ion hóa cao nhất.`,
+            atomicRadius: `Bán kính nguyên tử là khoảng cách từ hạt nhân đến lớp electron ngoài cùng. Xu hướng này giảm dần từ trái sang phải trong một chu kỳ do lực hút hạt nhân tăng và tăng dần từ trên xuống dưới trong một nhóm do tăng số lớp electron. Ví dụ: Franci (Fr) có bán kính nguyên tử lớn nhất trong các nguyên tố đã biết.`
         };
         
         // --- CORE FUNCTIONS ---
@@ -429,6 +461,8 @@
             if (activeTrend !== 'none') {
                 activeTrend = 'none';
                 applyTrendVisualization();
+                // Hide trend explanation when search is active
+                dom.trendExplanationContainer.classList.add('hidden');
             }
 
             const query = dom.searchInput.value.toLowerCase().trim();
@@ -464,6 +498,8 @@
             if (activeTrend !== 'none') {
                 activeTrend = 'none';
                 applyTrendVisualization();
+                // Hide trend explanation when filter is active
+                dom.trendExplanationContainer.classList.add('hidden');
             }
 
             const group = clickedItem.dataset.group;
@@ -479,6 +515,7 @@
             applyGroupFilter();
         }
 
+        // Removed async as it's no longer making API calls for trend explanation
         function handleTrendClick(event) {
             const clickedItem = event.target.closest('.trend-button');
             if (!clickedItem) return;
@@ -491,7 +528,15 @@
 
             const trend = clickedItem.dataset.trend;
             activeTrend = trend;
-            applyTrendVisualization();
+            applyTrendVisualization(); // Apply visual trend (colors)
+
+            // Dynamic Trend Explanation with hardcoded content
+            if (activeTrend === 'none') {
+                dom.trendExplanationContainer.classList.add('hidden'); // Hide explanation if 'none' is selected
+            } else {
+                dom.trendExplanationContainer.classList.remove('hidden'); // Show container
+                explainTrendHardcoded(activeTrend); // Use hardcoded explanation
+            }
         }
 
         function applyGroupFilter() {
@@ -580,11 +625,11 @@
             const cellElement = event.target.closest('.element-cell');
             const computedStyle = window.getComputedStyle(cellElement);
             const cellBgColor = computedStyle.backgroundColor;
-            const cellBorderColor = computedStyle.borderColor;
+            const cellBorderColor = computedStyle.existingBorderColor || computedStyle.borderColor; // Fallback for border color
 
             dom.elementTooltip.style.backgroundColor = cellBgColor;
             dom.elementTooltip.style.borderColor = cellBorderColor;
-            dom.elementTooltip.style.color = '#000000'; // Đặt màu chữ tooltip thành màu đen
+            dom.elementTooltip.style.color = '#000000'; // Set tooltip text color to black
 
             dom.elementTooltip.innerHTML = `
                 <p><strong>Số nguyên tử:</strong> ${element.number}</p>
@@ -629,6 +674,20 @@
             dom.elementTooltip.classList.remove('visible');
         }
 
+        // --- HARDCODED TREND EXPLANATION FUNCTION (UPDATED) ---
+        // Removed async as it's no longer making API calls
+        function explainTrendHardcoded(trend) {
+            const explanation = hardcodedTrendExplanations[trend];
+            if (explanation) {
+                dom.trendExplanationContent.innerHTML = `<p>${explanation}</p>`;
+                updateStatus('success-text', `Đã nhận giải thích về xu hướng ${trendDisplayNames[trend]}.`);
+            } else {
+                dom.trendExplanationContent.innerHTML = `<p class="text-red-500">Không có giải thích cho xu hướng này.</p>`;
+                updateStatus('error-text', `Không tìm thấy giải thích.`);
+            }
+            // Hide the loading spinner (it's commented out in HTML, but ensure it's not shown if ever re-added)
+            // if (dom.trendExplanationLoading) dom.trendExplanationLoading.classList.add('hidden');
+        }
 
         // --- UI CREATION ---
         function createUIGrids() {
@@ -697,6 +756,7 @@
         }
         
         // --- INITIALIZATION ---
+        // handleElementClick still uses AI for detailed info, so it remains async
         async function handleElementClick(element) {
             dom.bottomSheet.classList.add('active');
             dom.bottomSheetOverlay.style.display = 'block';
@@ -727,8 +787,6 @@
                     <hr class="my-4 border-t border-blue-200">
                 `;
                 
-                // Set font size for the AI-generated content wrapper explicitly
-                // This ensures it overrides any default tailwind classes like text-base
                 dom.geminiDetailContent.innerHTML = basicInfoHtml + `<div style="font-size: 1.6rem; line-height: 1.7;" class="text-gray-800 mt-4">${window.marked.parse(text)}</div>`;
                 updateStatus('success-text', `Đã nhận thông tin về ${element.name}.`);
             } catch (error) {
@@ -817,6 +875,7 @@
             });
             dom.bottomSheetOverlay.addEventListener('click', () => dom.closeBottomSheetButton.click());
 
+            // initializeFirebaseAndAI() is still called because element details still use AI
             await initializeFirebaseAndAI();
         }
 
