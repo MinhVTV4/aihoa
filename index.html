@@ -649,26 +649,23 @@
         <div id="molecule-tooltip"></div>
     </div>
 
-    <!-- Three.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
     <!-- GSAP Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/MotionPathPlugin.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/EasePack.min.js"></script>
     
-    <!-- Three.js Addons for Post-processing -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/OutputPass.js"></script>
-
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK & Three.js ES Modules -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
         import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-ai.js";
-        // Correct OrbitControls import for ES Module
+        // Correct Three.js and Addons imports for ES Modules
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
         import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js';
+        import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+        import { OutputPass } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/OutputPass.js';
+
 
         // --- Firebase, AI, 3D Engine Setup ---
         // Firebase configuration from aihoa2.html
@@ -782,14 +779,14 @@
                 chamber.appendChild(renderer.domElement);
 
                 // Setup Post-processing (Bloom effect) for visual enhancement
-                const renderPass = new THREE.RenderPass(scene, camera);
-                const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+                const renderPass = new RenderPass(scene, camera);
+                const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
                 bloomPass.threshold = 0;
                 bloomPass.strength = 1.2;
                 bloomPass.radius = 0.5;
-                const outputPass = new THREE.OutputPass();
+                const outputPass = new OutputPass();
 
-                composer = new THREE.EffectComposer(renderer);
+                composer = new EffectComposer(renderer);
                 composer.addPass(renderPass);
                 composer.addPass(bloomPass);
                 composer.addPass(outputPass);
@@ -811,8 +808,8 @@
 
                 // Add particle system for background ambiance
                 const particleCount = 1000;
-                const positions = new Float32Array(particleCount * 3);
-                const colors = new Float32Array(particleCount * 3);
+                const positions = new new THREE.Float32BufferAttribute(particleCount * 3, 3).array; // Use BufferAttribute directly
+                const colors = new new THREE.Float32BufferAttribute(particleCount * 3, 3).array; // Use BufferAttribute directly
                 const particleColor = new THREE.Color(0xffffff); // White particles
                 const sphereRadius = 25; // Increased radius
                 for (let i = 0; i < particleCount; i++) {
