@@ -375,18 +375,23 @@
             font-weight: 500;
         }
 
-        /* Legend sections integrated into the grid */
+        .legend-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
         .legend-section {
             background-color: #fff;
             padding: 15px;
             border-radius: 12px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            overflow: hidden; /* Prevent content overflow if too small */
+            flex: 1 1 auto; /* Allow sections to grow and shrink */
+            min-width: 280px; /* Minimum width for each legend section */
         }
 
         .legend-section h3 {
@@ -396,7 +401,7 @@
             margin-bottom: 15px;
             padding-bottom: 5px;
             border-bottom: 1px solid #e0f2fe;
-            width: 100%; /* Make border-bottom span full width */
+            text-align: center;
         }
 
         .legend-items {
@@ -443,21 +448,6 @@
             box-shadow: 0 0 0 3px #007bff; /* Highlight with a blue border/shadow */
             transform: translateY(-2px);
             font-weight: 700;
-        }
-
-        /* Reset Button */
-        #resetButton {
-            background-color: #607d8b; /* A neutral gray/blue */
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-left: 20px; /* Space from temperature controls */
-        }
-        #resetButton:hover {
-            background-color: #455a64;
         }
 
         .loading-spinner {
@@ -512,12 +502,39 @@
                 <span>K</span>
             </div>
         </div>
-        <button id="resetButton">Reset Bảng</button>
+    </div>
+
+    <div class="legend-container">
+        <div class="legend-section">
+            <h3>Trạng thái vật lý</h3>
+            <div class="legend-items" id="physicalStateLegend">
+                <div class="legend-item Solid" data-filter-type="state" data-filter-value="Solid">Rắn</div>
+                <div class="legend-item Liquid" data-filter-type="state" data-filter-value="Liquid">Lỏng</div>
+                <div class="legend-item Gas" data-filter-type="state" data-filter-value="Gas">Khí</div>
+                <div class="legend-item UnknownState" data-filter-type="state" data-filter-value="UnknownState">Chưa biết</div>
+            </div>
+        </div>
+
+        <div class="legend-section">
+            <h3>Loại nguyên tố</h3>
+            <div class="legend-items" id="elementTypeLegend">
+                <div class="legend-item alkali-metal" data-filter-type="group" data-filter-value="alkali-metal">Kim loại kiềm</div>
+                <div class="legend-item alkaline-earth-metal" data-filter-type="group" data-filter-value="alkaline-earth-metal">Kim loại kiềm thổ</div>
+                <div class="legend-item transition-metal" data-filter-type="group" data-filter-value="transition-metal">Kim loại chuyển tiếp</div>
+                <div class="legend-item post-transition-metal" data-filter-type="group" data-filter-value="post-transition-metal">Kim loại sau chuyển tiếp</div>
+                <div class="legend-item metalloid" data-filter-type="group" data-filter-value="metalloid">Á kim</div>
+                <div class="legend-item other-nonmetal" data-filter-type="group" data-filter-value="other-nonmetal">Phi kim khác</div>
+                <div class="legend-item halogen" data-filter-type="group" data-filter-value="halogen">Halogen</div>
+                <div class="legend-item noble-gas" data-filter-type="group" data-filter-value="noble-gas">Khí hiếm</div>
+                <div class="legend-item lanthanide" data-filter-type="group" data-filter-value="lanthanide">Họ Lanthan</div>
+                <div class="legend-item actinide" data-filter-type="group" data-filter-value="actinide">Họ Actini</div>
+            </div>
+        </div>
     </div>
 
     <div class="container">
         <div class="periodic-table-grid" id="periodicTable">
-            <!-- Các ô nguyên tố chính và các mục chú giải sẽ được tạo bởi JavaScript -->
+            <!-- Các ô nguyên tố chính sẽ được tạo bởi JavaScript -->
         </div>
 
         <!-- Khoảng cách giữa bảng chính và khối f-block -->
@@ -576,6 +593,7 @@
         let auth; // Biến cho Firebase Authentication
         let model;
         let userId = null; // ID người dùng (sẽ được lấy sau khi xác thực)
+        let elements = []; // *** NEW: Initialize as an empty array, will be populated from JSON
 
         // Lấy các phần tử DOM
         const periodicTable = document.getElementById('periodicTable');
@@ -594,7 +612,10 @@
         const celsiusInput = document.getElementById('celsiusInput');
         const fahrenheitInput = document.getElementById('fahrenheitInput');
         const kelvinInput = document.getElementById('kelvinInput');
-        const resetButton = document.getElementById('resetButton'); // Nút reset
+
+        // Các phần tử chú giải
+        const physicalStateLegend = document.getElementById('physicalStateLegend');
+        const elementTypeLegend = document.getElementById('elementTypeLegend');
 
         let currentTemperatureCelsius = parseFloat(celsiusInput.value); // Nhiệt độ hiện tại tính bằng Celsius
         let activeFilter = { type: null, value: null, element: null }; // Để theo dõi bộ lọc đang hoạt động
@@ -638,7 +659,6 @@
                         await signInWithCustomToken(auth, initialAuthToken);
                         userId = auth.currentUser.uid;
                         console.log("Đã đăng nhập bằng custom token. User ID:", userId);
-                        updateStatus('success-text', "Firebase App đã khởi tạo và người dùng đã đăng nhập.");
                         authSuccess = true;
                     } catch (tokenError) {
                         console.error("Lỗi đăng nhập bằng custom token:", tokenError);
@@ -652,7 +672,6 @@
                         await signInAnonymously(auth);
                         userId = auth.currentUser.uid;
                         console.log("Đã đăng nhập ẩn danh. User ID:", userId);
-                        updateStatus('success-text', "Firebase App đã khởi tạo và người dùng đã đăng nhập.");
                         authSuccess = true;
                     } catch (authError) {
                         if (authError.code === 'auth/admin-restricted-operation') {
@@ -667,6 +686,7 @@
                 }
                 
                 if (authSuccess) {
+                    updateStatus('success-text', "Firebase App đã khởi tạo và người dùng đã đăng nhập.");
                     initializeAIModel(); 
                 } else {
                     updateStatus('error-text', "Không thể xác thực người dùng. AI Model sẽ không được khởi tạo.");
@@ -686,147 +706,13 @@
                 const ai = getAI(app, { backend: new GoogleAIBackend() });
                 model = getGenerativeModel(ai, { model: "gemini-1.5-flash-latest" }); 
                 console.log("Generative Model instance đã tạo với model 'gemini-1.5-flash-latest'!");
-                updateStatus('success-text', "AI Model đã sẵn sàng. Hãy chọn một nguyên tố!");
             } catch (e) {
                 console.error("Lỗi khi khởi tạo AI Model:", e);
                 updateStatus('error-text', `Lỗi khởi tạo AI Model: ${e.message}.<br>Hãy đảm bảo Gemini API đã được kích hoạt cho dự án của bạn trong Google Cloud Console.`);
             }
         }
 
-        // Dữ liệu đầy đủ của 118 nguyên tố hóa học với điểm nóng chảy và điểm sôi
-        const elements = [
-            // Period 1 (row 1)
-            { number: 1, symbol: "H", name: "Hydrogen", group: "other-nonmetal", row: 1, col: 1, melting_point_celsius: -259.16, boiling_point_celsius: -252.87 },
-            { number: 2, symbol: "He", name: "Helium", group: "noble-gas", row: 1, col: 18, melting_point_celsius: -272.2, boiling_point_celsius: -268.93 },
-            // Period 2 (row 2)
-            { number: 3, symbol: "Li", name: "Lithium", group: "alkali-metal", row: 2, col: 1, melting_point_celsius: 180.5, boiling_point_celsius: 1342 },
-            { number: 4, symbol: "Be", name: "Beryllium", group: "alkaline-earth-metal", row: 2, col: 2, melting_point_celsius: 1287, boiling_point_celsius: 2471 },
-            { number: 5, symbol: "B", name: "Boron", group: "metalloid", row: 2, col: 13, melting_point_celsius: 2075, boiling_point_celsius: 3927 },
-            { number: 6, symbol: "C", name: "Carbon", group: "other-nonmetal", row: 2, col: 14, melting_point_celsius: 3550, boiling_point_celsius: 4827 }, // Sublimes
-            { number: 7, symbol: "N", name: "Nitrogen", group: "other-nonmetal", row: 2, col: 15, melting_point_celsius: -210.0, boiling_point_celsius: -195.8 },
-            { number: 8, symbol: "O", name: "Oxygen", group: "other-nonmetal", row: 2, col: 16, melting_point_celsius: -218.79, boiling_point_celsius: -182.95 },
-            { number: 9, symbol: "F", name: "Fluorine", group: "halogen", row: 2, col: 17, melting_point_celsius: -219.67, boiling_point_celsius: -188.12 },
-            { number: 10, symbol: "Ne", name: "Neon", group: "noble-gas", row: 2, col: 18, melting_point_celsius: -248.59, boiling_point_celsius: -246.08 },
-            // Period 3 (row 3)
-            { number: 11, symbol: "Na", name: "Sodium", group: "alkali-metal", row: 3, col: 1, melting_point_celsius: 97.72, boiling_point_celsius: 883 },
-            { number: 12, symbol: "Mg", name: "Magnesium", group: "alkaline-earth-metal", row: 3, col: 2, melting_point_celsius: 650, boiling_point_celsius: 1091 },
-            { number: 13, symbol: "Al", name: "Aluminum", group: "post-transition-metal", row: 3, col: 13, melting_point_celsius: 660.32, boiling_point_celsius: 2519 },
-            { number: 14, symbol: "Si", name: "Silicon", group: "metalloid", row: 3, col: 14, melting_point_celsius: 1414, boiling_point_celsius: 3265 },
-            { number: 15, symbol: "P", name: "Phosphorus", group: "other-nonmetal", row: 3, col: 15, melting_point_celsius: 44.15, boiling_point_celsius: 280.5 }, // White Phosphorus
-            { number: 16, symbol: "S", name: "Sulfur", group: "other-nonmetal", row: 3, col: 16, melting_point_celsius: 115.21, boiling_point_celsius: 444.6 },
-            { number: 17, symbol: "Cl", name: "Chlorine", group: "halogen", row: 3, col: 17, melting_point_celsius: -101.5, boiling_point_celsius: -34.04 },
-            { number: 18, symbol: "Ar", name: "Argon", group: "noble-gas", row: 3, col: 18, melting_point_celsius: -189.34, boiling_point_celsius: -185.84 },
-            // Period 4 (row 4)
-            { number: 19, symbol: "K", name: "Potassium", group: "alkali-metal", row: 4, col: 1, melting_point_celsius: 63.5, boiling_point_celsius: 759 },
-            { number: 20, symbol: "Ca", name: "Calcium", group: "alkaline-earth-metal", row: 4, col: 2, melting_point_celsius: 842, boiling_point_celsius: 1484 },
-            { number: 21, symbol: "Sc", name: "Scandium", group: "transition-metal", row: 4, col: 3, melting_point_celsius: 1541, boiling_point_celsius: 2836 },
-            { number: 22, symbol: "Ti", name: "Titanium", group: "transition-metal", row: 4, col: 4, melting_point_celsius: 1668, boiling_point_celsius: 3287 },
-            { number: 23, symbol: "V", name: "Vanadium", group: "transition-metal", row: 4, col: 5, melting_point_celsius: 1910, boiling_point_celsius: 3407 },
-            { number: 24, symbol: "Cr", name: "Chromium", group: "transition-metal", row: 4, col: 6, melting_point_celsius: 1857, boiling_point_celsius: 2671 },
-            { number: 25, symbol: "Mn", name: "Manganese", group: "transition-metal", row: 4, col: 7, melting_point_celsius: 1246, boiling_point_celsius: 2061 },
-            { number: 26, symbol: "Fe", name: "Iron", group: "transition-metal", row: 4, col: 8, melting_point_celsius: 1538, boiling_point_celsius: 2862 },
-            { number: 27, symbol: "Co", name: "Cobalt", group: "transition-metal", row: 4, col: 9, melting_point_celsius: 1495, boiling_point_celsius: 2927 },
-            { number: 28, symbol: "Ni", name: "Nickel", group: "transition-metal", row: 4, col: 10, melting_point_celsius: 1455, boiling_point_celsius: 2913 },
-            { number: 29, symbol: "Cu", name: "Copper", group: "transition-metal", row: 4, col: 11, melting_point_celsius: 1084.62, boiling_point_celsius: 2562 },
-            { number: 30, symbol: "Zn", name: "Zinc", group: "transition-metal", row: 4, col: 12, melting_point_celsius: 419.53, boiling_point_celsius: 907 },
-            { number: 31, symbol: "Ga", name: "Gallium", group: "post-transition-metal", row: 4, col: 13, melting_point_celsius: 29.76, boiling_point_celsius: 2204 },
-            { number: 32, symbol: "Ge", name: "Germanium", group: "metalloid", row: 4, col: 14, melting_point_celsius: 938.25, boiling_point_celsius: 2833 },
-            { number: 33, symbol: "As", name: "Arsenic", group: "metalloid", row: 4, col: 15, melting_point_celsius: 817, boiling_point_celsius: 614 }, // Sublimes
-            { number: 34, symbol: "Se", name: "Selenium", group: "other-nonmetal", row: 4, col: 16, melting_point_celsius: 221, boiling_point_celsius: 685 },
-            { number: 35, symbol: "Br", name: "Bromine", group: "halogen", row: 4, col: 17, melting_point_celsius: -7.2, boiling_point_celsius: 58.8 },
-            { number: 36, symbol: "Kr", name: "Krypton", group: "noble-gas", row: 4, col: 18, melting_point_celsius: -157.36, boiling_point_celsius: -153.22 },
-            // Period 5 (row 5)
-            { number: 37, symbol: "Rb", name: "Rubidium", group: "alkali-metal", row: 5, col: 1, melting_point_celsius: 39.3, boiling_point_celsius: 688 },
-            { number: 38, symbol: "Sr", name: "Strontium", group: "alkaline-earth-metal", row: 5, col: 2, melting_point_celsius: 777, boiling_point_celsius: 1382 },
-            { number: 39, symbol: "Y", name: "Yttrium", group: "transition-metal", row: 5, col: 3, melting_point_celsius: 1526, boiling_point_celsius: 3338 },
-            { number: 40, symbol: "Zr", name: "Zirconium", group: "transition-metal", row: 5, col: 4, melting_point_celsius: 1855, boiling_point_celsius: 4377 },
-            { number: 41, symbol: "Nb", name: "Niobium", group: "transition-metal", row: 5, col: 5, melting_point_celsius: 2477, boiling_point_celsius: 4744 },
-            { number: 42, symbol: "Mo", name: "Molybdenum", group: "transition-metal", row: 5, col: 6, melting_point_celsius: 2623, boiling_point_celsius: 4639 },
-            { number: 43, symbol: "Tc", name: "Technetium", group: "transition-metal", row: 5, col: 7, melting_point_celsius: 2157, boiling_point_celsius: 4265 },
-            { number: 44, symbol: "Ru", name: "Ruthenium", group: "transition-metal", row: 5, col: 8, melting_point_celsius: 2334, boiling_point_celsius: 4150 },
-            { number: 45, symbol: "Rh", name: "Rhodium", group: "transition-metal", row: 5, col: 9, melting_point_celsius: 1964, boiling_point_celsius: 3695 },
-            { number: 46, symbol: "Pd", name: "Palladium", group: "transition-metal", row: 5, col: 10, melting_point_celsius: 1554.8, boiling_point_celsius: 2963 },
-            { number: 47, symbol: "Ag", name: "Silver", group: "transition-metal", row: 5, col: 11, melting_point_celsius: 961.78, boiling_point_celsius: 2162 },
-            { number: 48, symbol: "Cd", name: "Cadmium", group: "transition-metal", row: 5, col: 12, melting_point_celsius: 321.07, boiling_point_celsius: 767 },
-            { number: 49, symbol: "In", name: "Indium", group: "post-transition-metal", row: 5, col: 13, melting_point_celsius: 156.6, boiling_point_celsius: 2072 },
-            { number: 50, symbol: "Sn", name: "Tin", group: "post-transition-metal", row: 5, col: 14, melting_point_celsius: 231.93, boiling_point_celsius: 2602 },
-            { number: 51, symbol: "Sb", name: "Antimony", group: "metalloid", row: 5, col: 15, melting_point_celsius: 630.63, boiling_point_celsius: 1587 },
-            { number: 52, symbol: "Te", name: "Tellurium", group: "metalloid", row: 5, col: 16, melting_point_celsius: 449.5, boiling_point_celsius: 988 },
-            { number: 53, symbol: "I", name: "Iodine", group: "halogen", row: 5, col: 17, melting_point_celsius: 113.7, boiling_point_celsius: 184.3 },
-            { number: 54, symbol: "Xe", name: "Xenon", group: "noble-gas", row: 5, col: 18, melting_point_celsius: -111.7, boiling_point_celsius: -108.099 },
-            // Period 6 (row 6) - Main table elements
-            { number: 55, symbol: "Cs", name: "Caesium", group: "alkali-metal", row: 6, col: 1, melting_point_celsius: 28.44, boiling_point_celsius: 671 },
-            { number: 56, symbol: "Ba", name: "Barium", group: "alkaline-earth-metal", row: 6, col: 2, melting_point_celsius: 727, boiling_point_celsius: 1897 },
-            // Placeholder cho Lanthanides trong bảng chính
-            { number: 57, symbol: "57-71", name: "Lanthanides", group: "lanthanide-placeholder", row: 6, col: 3, isPlaceholder: true, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 72, symbol: "Hf", name: "Hafnium", group: "transition-metal", row: 6, col: 4, melting_point_celsius: 2233, boiling_point_celsius: 4603 },
-            { number: 73, symbol: "Ta", name: "Tantalum", group: "transition-metal", row: 6, col: 5, melting_point_celsius: 3017, boiling_point_celsius: 5458 },
-            { number: 74, symbol: "W", name: "Tungsten", group: "transition-metal", row: 6, col: 6, melting_point_celsius: 3422, boiling_point_celsius: 5930 },
-            { number: 75, symbol: "Re", name: "Rhenium", group: "transition-metal", row: 6, col: 7, melting_point_celsius: 3186, boiling_point_celsius: 5596 },
-            { number: 76, symbol: "Os", name: "Osmium", group: "transition-metal", row: 6, col: 8, melting_point_celsius: 3033, boiling_point_celsius: 5012 },
-            { number: 77, symbol: "Ir", name: "Iridium", group: "transition-metal", row: 6, col: 9, melting_point_celsius: 2466, boiling_point_celsius: 4428 },
-            { number: 78, symbol: "Pt", name: "Platinum", group: "transition-metal", row: 6, col: 10, melting_point_celsius: 1768.3, boiling_point_celsius: 3825 },
-            { number: 79, symbol: "Au", name: "Gold", group: "transition-metal", row: 6, col: 11, melting_point_celsius: 1064.18, boiling_point_celsius: 2856 },
-            { number: 80, symbol: "Hg", name: "Mercury", group: "transition-metal", row: 6, col: 12, melting_point_celsius: -38.83, boiling_point_celsius: 356.73 },
-            { number: 81, symbol: "Tl", name: "Thallium", group: "post-transition-metal", row: 6, col: 13, melting_point_celsius: 304, boiling_point_celsius: 1473 },
-            { number: 82, symbol: "Pb", name: "Lead", group: "post-transition-metal", row: 6, col: 14, melting_point_celsius: 327.46, boiling_point_celsius: 1749 },
-            { number: 83, symbol: "Bi", name: "Bismuth", group: "post-transition-metal", row: 6, col: 15, melting_point_celsius: 271.4, boiling_point_celsius: 1564 },
-            { number: 84, symbol: "Po", name: "Polonium", group: "metalloid", row: 6, col: 16, melting_point_celsius: 254, boiling_point_celsius: 962 },
-            { number: 85, symbol: "At", name: "Astatine", group: "halogen", row: 6, col: 17, melting_point_celsius: 302, boiling_point_celsius: 337 }, // Estimated
-            { number: 86, symbol: "Rn", name: "Radon", group: "noble-gas", row: 6, col: 18, melting_point_celsius: -71, boiling_point_celsius: -61.7 },
-            // Period 7 (row 7) - Main table elements
-            { number: 87, symbol: "Fr", name: "Francium", group: "alkali-metal", row: 7, col: 1, melting_point_celsius: 27, boiling_point_celsius: 677 }, // Estimated
-            { number: 88, symbol: "Ra", name: "Radium", group: "alkaline-earth-metal", row: 7, col: 2, melting_point_celsius: 700, boiling_point_celsius: 1737 },
-            // Placeholder cho Actinides trong bảng chính
-            { number: 89, symbol: "89-103", name: "Actinides", group: "actinide-placeholder", row: 7, col: 3, isPlaceholder: true, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 104, symbol: "Rf", name: "Rutherfordium", group: "transition-metal", row: 7, col: 4, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 105, symbol: "Db", name: "Dubnium", group: "transition-metal", row: 7, col: 5, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 106, symbol: "Sg", name: "Seaborgium", group: "transition-metal", row: 7, col: 6, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 107, symbol: "Bh", name: "Bohrium", group: "transition-metal", row: 7, col: 7, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 108, symbol: "Hs", name: "Hassium", group: "transition-metal", row: 7, col: 8, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 109, symbol: "Mt", name: "Meitnerium", group: "transition-metal", row: 7, col: 9, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 110, symbol: "Ds", name: "Darmstadtium", group: "transition-metal", row: 7, col: 10, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 111, symbol: "Rg", name: "Roentgenium", group: "transition-metal", row: 7, col: 11, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 112, symbol: "Cn", name: "Copernicium", group: "transition-metal", row: 7, col: 12, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 113, symbol: "Nh", name: "Nihonium", group: "post-transition-metal", row: 7, col: 13, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 114, symbol: "Fl", name: "Flerovium", group: "post-transition-metal", row: 7, col: 14, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 115, symbol: "Mc", name: "Moscovium", group: "post-transition-metal", row: 7, col: 15, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 116, symbol: "Lv", name: "Livermorium", group: "post-transition-metal", row: 7, col: 16, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 117, symbol: "Ts", name: "Tennessine", group: "halogen", row: 7, col: 17, melting_point_celsius: null, boiling_point_celsius: null },
-            { number: 118, symbol: "Og", name: "Oganesson", group: "noble-gas", row: 7, col: 18, melting_point_celsius: null, boiling_point_celsius: null },
-            // Lanthanides (separate block, rendered at row 9, cols 4-18 for visual layout)
-            { number: 57, symbol: "La", name: "Lanthanum", group: "lanthanide", row: 9, col: 4, melting_point_celsius: 920, boiling_point_celsius: 3464 },
-            { number: 58, symbol: "Ce", name: "Cerium", group: "lanthanide", row: 9, col: 5, melting_point_celsius: 795, boiling_point_celsius: 3443 },
-            { number: 59, symbol: "Pr", name: "Praseodymium", group: "lanthanide", row: 9, col: 6, melting_point_celsius: 935, boiling_point_celsius: 3522 },
-            { number: 60, symbol: "Nd", name: "Neodymium", group: "lanthanide", row: 9, col: 7, melting_point_celsius: 1021, boiling_point_celsius: 3074 },
-            { number: 61, symbol: "Pm", name: "Promethium", group: "lanthanide", row: 9, col: 8, melting_point_celsius: 1042, boiling_point_celsius: 3000 },
-            { number: 62, symbol: "Sm", name: "Samarium", group: "lanthanide", row: 9, col: 9, melting_point_celsius: 1072, boiling_point_celsius: 1794 },
-            { number: 63, symbol: "Eu", name: "Europium", group: "lanthanide", row: 9, col: 10, melting_point_celsius: 822, boiling_point_celsius: 1529 },
-            { number: 64, symbol: "Gd", name: "Gadolinium", group: "lanthanide", row: 9, col: 11, melting_point_celsius: 1312, boiling_point_celsius: 3273 },
-            { number: 65, symbol: "Tb", name: "Terbium", group: "lanthanide", row: 9, col: 12, melting_point_celsius: 1356, boiling_point_celsius: 3230 },
-            { number: 66, symbol: "Dy", name: "Dysprosium", group: "lanthanide", row: 9, col: 13, melting_point_celsius: 1412, boiling_point_celsius: 2567 },
-            { number: 67, symbol: "Ho", name: "Holmium", group: "lanthanide", row: 9, col: 14, melting_point_celsius: 1474, boiling_point_celsius: 2700 },
-            { number: 68, symbol: "Er", name: "Erbium", group: "lanthanide", row: 9, col: 15, melting_point_celsius: 1529, boiling_point_celsius: 2868 },
-            { number: 69, symbol: "Tm", name: "Thulium", group: "lanthanide", row: 9, col: 16, melting_point_celsius: 1545, boiling_point_celsius: 1950 },
-            { number: 70, symbol: "Yb", name: "Ytterbium", group: "lanthanide", row: 9, col: 17, melting_point_celsius: 819, boiling_point_celsius: 1196 },
-            { number: 71, symbol: "Lu", name: "Lutetium", group: "lanthanide", row: 9, col: 18, melting_point_celsius: 1663, boiling_point_celsius: 3402 },
-            // Actinides (separate block, rendered at row 10, cols 4-18 for visual layout)
-            { number: 89, symbol: "Ac", name: "Actinium", group: "actinide", row: 10, col: 4, melting_point_celsius: 1050, boiling_point_celsius: 3200 },
-            { number: 90, symbol: "Th", name: "Thorium", group: "actinide", row: 10, col: 5, melting_point_celsius: 1750, boiling_point_celsius: 4788 },
-            { number: 91, symbol: "Pa", name: "Protactinium", group: "actinide", row: 10, col: 6, melting_point_celsius: 1572, boiling_point_celsius: 4027 },
-            { number: 92, symbol: "U", name: "Uranium", group: "actinide", row: 10, col: 7, melting_point_celsius: 1132, boiling_point_celsius: 4131 },
-            { number: 93, symbol: "Np", name: "Neptunium", group: "actinide", row: 10, col: 8, melting_point_celsius: 639, boiling_point_celsius: 4000 },
-            { number: 94, symbol: "Pu", name: "Plutonium", group: "actinide", row: 10, col: 9, melting_point_celsius: 640, boiling_point_celsius: 3228 },
-            { number: 95, symbol: "Am", name: "Americium", group: "actinide", row: 10, col: 10, melting_point_celsius: 1176, boiling_point_celsius: 2607 },
-            { number: 96, symbol: "Cm", name: "Curium", group: "actinide", row: 10, col: 11, melting_point_celsius: 1340, boiling_point_celsius: 3100 },
-            { number: 97, symbol: "Bk", name: "Berkelium", group: "actinide", row: 10, col: 12, melting_point_celsius: 986, boiling_point_celsius: 2627 },
-            { number: 98, symbol: "Cf", name: "Californium", group: "actinide", row: 10, col: 13, melting_point_celsius: 900, boiling_point_celsius: 1743 },
-            { number: 99, symbol: "Es", name: "Einsteinium", group: "actinide", row: 10, col: 14, melting_point_celsius: 860, boiling_point_celsius: 991 },
-            { number: 100, symbol: "Fm", name: "Fermium", group: "actinide", row: 10, col: 15, melting_point_celsius: 1527, boiling_point_celsius: null },
-            { number: 101, symbol: "Md", name: "Mendelevium", group: "actinide", row: 10, col: 16, melting_point_celsius: 827, boiling_point_celsius: null },
-            { number: 102, symbol: "No", name: "Nobelium", group: "actinide", row: 10, col: 17, melting_point_celsius: 827, boiling_point_celsius: null },
-            { number: 103, symbol: "Lr", name: "Lawrencium", group: "actinide", row: 10, col: 18, melting_point_celsius: 1627, boiling_point_celsius: null }
-        ];
+        // *** REMOVED the large elements array from here ***
 
         // Hàm xác định trạng thái vật lý của nguyên tố
         function getPhysicalState(temperatureC, meltingPointC, boilingPointC) {
@@ -971,27 +857,6 @@
             });
         }
 
-        // Hàm reset bảng về trạng thái ban đầu
-        function resetTable() {
-            // Đặt lại nhiệt độ về mặc định
-            celsiusInput.value = 25;
-            updateTemperatureInputs('celsiusInput'); // Kích hoạt cập nhật
-            
-            // Xóa bộ lọc đang hoạt động
-            activeFilter = { type: null, value: null, element: null };
-            document.querySelectorAll('.selected-filter-item').forEach(item => item.classList.remove('selected-filter-item'));
-            applyCurrentFilter(); // Áp dụng để xóa hiệu ứng làm mờ
-            
-            // Xóa trạng thái active của ô nguyên tố
-            document.querySelectorAll('.element-cell.active').forEach(cell => {
-                cell.classList.remove('active');
-            });
-
-            hideBottomSheet(); // Đóng bottom sheet nếu đang mở
-
-            updateStatus('success-text', "Bảng đã được reset về trạng thái chuẩn.");
-        }
-
         // Gắn sự kiện cho thanh trượt và các ô input nhiệt độ
         temperatureRange.addEventListener('input', () => {
             currentTemperatureCelsius = parseFloat(temperatureRange.value);
@@ -1005,11 +870,29 @@
         fahrenheitInput.addEventListener('change', () => updateTemperatureInputs('fahrenheitInput'));
         kelvinInput.addEventListener('change', () => updateTemperatureInputs('kelvinInput'));
 
-        // Gắn sự kiện cho nút Reset
-        resetButton.addEventListener('click', resetTable);
+        // Gắn sự kiện cho các mục chú giải
+        physicalStateLegend.addEventListener('click', (event) => {
+            const item = event.target.closest('.legend-item');
+            if (item) {
+                applyFilter(item.dataset.filterType, item.dataset.filterValue, item);
+            }
+        });
+
+        elementTypeLegend.addEventListener('click', (event) => {
+            const item = event.target.closest('.legend-item');
+            if (item) {
+                applyFilter(item.dataset.filterType, item.dataset.filterValue, item);
+            }
+        });
+
 
         // Tạo bảng tuần hoàn trên giao diện
         function createPeriodicTable() {
+            if (elements.length === 0) {
+                console.error("Dữ liệu nguyên tố chưa được tải.");
+                updateStatus('error-text', "Lỗi: Không thể tải dữ liệu nguyên tố.");
+                return;
+            }
             periodicTable.innerHTML = '';
             lanthanidesBlock.innerHTML = '';
             actinidesBlock.innerHTML = '';
@@ -1061,65 +944,11 @@
                 }
             });
 
-            // --- CHÈN CHÚ GIẢI VÀO LƯỚI CHÍNH ---
-            // Chú giải Trạng thái vật lý
-            const physicalStateLegendSection = document.createElement('div');
-            physicalStateLegendSection.className = 'legend-section physical-state-legend-section';
-            physicalStateLegendSection.style.gridColumn = '4 / span 4'; // Cột 4 đến 7
-            physicalStateLegendSection.style.gridRow = '2'; // Hàng 2
-            physicalStateLegendSection.innerHTML = `
-                <h3>Trạng thái vật lý</h3>
-                <div class="legend-items">
-                    <div class="legend-item Solid" data-filter-type="state" data-filter-value="Solid">Rắn</div>
-                    <div class="legend-item Liquid" data-filter-type="state" data-filter-value="Liquid">Lỏng</div>
-                    <div class="legend-item Gas" data-filter-type="state" data-filter-value="Gas">Khí</div>
-                    <div class="legend-item UnknownState" data-filter-type="state" data-filter-value="UnknownState">Chưa biết</div>
-                </div>
-            `;
-            // Gắn sự kiện cho các mục chú giải vật lý
-            physicalStateLegendSection.querySelectorAll('.legend-item').forEach(item => {
-                item.addEventListener('click', (event) => {
-                    applyFilter(item.dataset.filterType, item.dataset.filterValue, item);
-                });
-            });
-            mainGrid[1][3] = physicalStateLegendSection; // Đặt vào vị trí (row=2, col=4) - index 1,3
-
-            // Chú giải Loại nguyên tố
-            const elementTypeLegendSection = document.createElement('div');
-            elementTypeLegendSection.className = 'legend-section element-type-legend-section';
-            elementTypeLegendSection.style.gridColumn = '8 / span 5'; // Cột 8 đến 12
-            elementTypeLegendSection.style.gridRow = '2 / span 2'; // Hàng 2 và 3
-            elementTypeLegendSection.innerHTML = `
-                <h3>Loại nguyên tố</h3>
-                <div class="legend-items">
-                    <div class="legend-item alkali-metal" data-filter-type="group" data-filter-value="alkali-metal">Kim loại kiềm</div>
-                    <div class="legend-item alkaline-earth-metal" data-filter-type="group" data-filter-value="alkaline-earth-metal">Kim loại kiềm thổ</div>
-                    <div class="legend-item transition-metal" data-filter-type="group" data-filter-value="transition-metal">Kim loại chuyển tiếp</div>
-                    <div class="legend-item post-transition-metal" data-filter-type="group" data-filter-value="post-transition-metal">Kim loại sau chuyển tiếp</div>
-                    <div class="legend-item metalloid" data-filter-type="group" data-filter-value="metalloid">Á kim</div>
-                    <div class="legend-item other-nonmetal" data-filter-type="group" data-filter-value="other-nonmetal">Phi kim khác</div>
-                    <div class="legend-item halogen" data-filter-type="group" data-filter-value="halogen">Halogen</div>
-                    <div class="legend-item noble-gas" data-filter-type="group" data-filter-value="noble-gas">Khí hiếm</div>
-                    <div class="legend-item lanthanide" data-filter-type="group" data-filter-value="lanthanide">Họ Lanthan</div>
-                    <div class="legend-item actinide" data-filter-type="group" data-filter-value="actinide">Họ Actini</div>
-                </div>
-            `;
-            // Gắn sự kiện cho các mục chú giải loại nguyên tố
-            elementTypeLegendSection.querySelectorAll('.legend-item').forEach(item => {
-                item.addEventListener('click', (event) => {
-                    applyFilter(item.dataset.filterType, item.dataset.filterValue, item);
-                });
-            });
-            mainGrid[1][7] = elementTypeLegendSection; // Đặt vào vị trí (row=2, col=8) - index 1,7
-
-            // Duyệt qua mainGrid và thêm các ô vào periodicTable
             for (let r = 0; r < mainGrid.length; r++) {
                 for (let c = 0; c < mainGrid[r].length; c++) {
                     if (mainGrid[r][c]) {
                         periodicTable.appendChild(mainGrid[r][c]);
                     } else {
-                        // Chỉ thêm ô trống nếu không phải là một trong các ô mà legend chiếm
-                        // Điều này để tránh tạo các ô trống không cần thiết dưới legend
                         const emptyCell = document.createElement('div');
                         emptyCell.classList.add('empty-cell');
                         periodicTable.appendChild(emptyCell);
@@ -1127,7 +956,6 @@
                 }
             }
 
-            // Render khối Lanthanide (như trước)
             for(let i = 0; i < 3; i++) {
                 const empty = document.createElement('div');
                 empty.classList.add('empty-cell');
@@ -1143,7 +971,6 @@
                 }
             }
 
-            // Render khối Actinide (như trước)
             for(let i = 0; i < 3; i++) {
                 const empty = document.createElement('div');
                 empty.classList.add('empty-cell');
@@ -1163,7 +990,9 @@
 
         // Xử lý khi nhấp vào một nguyên tố
         async function handleElementClick(element) {
-            if (element.isPlaceholder) {
+            // Find the full element object from the global list to ensure all data is present
+            const fullElementData = elements.find(el => el.number === element.number);
+            if (!fullElementData || fullElementData.isPlaceholder) {
                 return;
             }
 
@@ -1176,16 +1005,16 @@
                 cell.classList.remove('active');
             });
 
-            const clickedCell = document.querySelector(`[data-symbol="${element.symbol}"]`);
+            const clickedCell = document.querySelector(`[data-symbol="${fullElementData.symbol}"]`);
             if (clickedCell) {
                 clickedCell.classList.add('active');
             }
 
             showBottomSheet();
-            detailElementName.textContent = `${element.name} (${element.symbol}) - ${element.number}`;
-            geminiDetailContent.innerHTML = `<p><strong>Số nguyên tử:</strong> ${element.number}</p>
-                                        <p><strong>Ký hiệu:</strong> ${element.symbol}</p>
-                                        <p><strong>Tên:</strong> ${element.name}</p>
+            detailElementName.textContent = `${fullElementData.name} (${fullElementData.symbol}) - ${fullElementData.number}`;
+            geminiDetailContent.innerHTML = `<p><strong>Số nguyên tử:</strong> ${fullElementData.number}</p>
+                                        <p><strong>Ký hiệu:</strong> ${fullElementData.symbol}</p>
+                                        <p><strong>Tên:</strong> ${fullElementData.name}</p>
                                         <p class="text-gray-500">Đang yêu cầu Gemini AI để có thêm thông tin...</p>`;
             geminiLoading.classList.remove('hidden');
 
@@ -1197,7 +1026,7 @@
             }
 
             try {
-                const promptText = `Cung cấp thông tin chi tiết về nguyên tố hóa học ${element.name} (ký hiệu ${element.symbol}, số nguyên tử ${element.number}). Vui lòng bao gồm:
+                const promptText = `Cung cấp thông tin chi tiết về nguyên tố hóa học ${fullElementData.name} (ký hiệu ${fullElementData.symbol}, số nguyên tử ${fullElementData.number}). Vui lòng bao gồm:
 - Tên đầy đủ (full name)
 - Ký hiệu nguyên tử (atomic symbol)
 - Số nguyên tử (atomic number)
@@ -1211,20 +1040,20 @@
 - Ứng dụng phổ biến (common uses)
 Vui lòng trả lời dưới dạng văn bản có cấu trúc với các mục rõ ràng sử dụng định dạng Markdown (ví dụ: ## Tiêu đề, - Danh sách, **in đậm**, *in nghiêng*, \`code\`, liên kết). Sử dụng ngôn ngữ tiếng Việt.`;
 
-                updateStatus('info-text', `Đang hỏi Gemini về ${element.name}...`);
+                updateStatus('info-text', `Đang hỏi Gemini về ${fullElementData.name}...`);
                 const result = await model.generateContent(promptText);
                 const response = result.response;
                 const text = response.text();
 
                 geminiDetailContent.innerHTML = `
-                    <p><strong>Tên đầy đủ:</strong> ${element.name}</p>
-                    <p><strong>Ký hiệu:</strong> ${element.symbol}</p>
-                    <p><strong>Số nguyên tử:</strong> ${element.number}</p>
+                    <p><strong>Tên đầy đủ:</strong> ${fullElementData.name}</p>
+                    <p><strong>Ký hiệu:</strong> ${fullElementData.symbol}</p>
+                    <p><strong>Số nguyên tử:</strong> ${fullElementData.number}</p>
                     <hr class="my-4 border-t border-blue-200">
                     <h4 class="font-bold text-md mb-2 text-blue-600">Thông tin chi tiết từ Gemini AI:</h4>
                     <div class="text-gray-700">${marked.parse(text)}</div>
                 `;
-                updateStatus('success-text', `Đã nhận thông tin về ${element.name} từ Gemini.`);
+                updateStatus('success-text', `Đã nhận thông tin về ${fullElementData.name} từ Gemini.`);
 
             } catch (error) {
                 console.error("Lỗi khi gọi Gemini API:", error);
@@ -1235,13 +1064,34 @@ Vui lòng trả lời dưới dạng văn bản có cấu trúc với các mục
             }
         }
 
-        // Khởi tạo ứng dụng khi DOM đã tải xong
-        document.addEventListener('DOMContentLoaded', () => {
+        // *** NEW: Main application initialization function ***
+        async function main() {
+            // Start Firebase initialization
             initializeFirebase();
-            createPeriodicTable();
-            // Cập nhật trạng thái nhiệt độ ban đầu khi tải trang
-            updateTemperatureInputs('celsiusInput');
-        });
+            
+            // Fetch the element data
+            updateStatus('info-text', "Đang tải dữ liệu bảng tuần hoàn...");
+            try {
+                const response = await fetch('./elements.json'); // Make sure elements.json is in the same directory
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                elements = await response.json();
+                
+                // Once data is loaded, create the table and set initial state
+                updateStatus('success-text', "Dữ liệu đã tải xong. Đang vẽ bảng...");
+                createPeriodicTable();
+                updateTemperatureInputs('celsiusInput');
+                updateStatus('success-text', "AI Model đã sẵn sàng. Hãy chọn một nguyên tố!");
+
+            } catch (error) {
+                console.error("Không thể tải file elements.json:", error);
+                updateStatus('error-text', `Không thể tải dữ liệu bảng tuần hoàn. Lỗi: ${error.message}`);
+            }
+        }
+
+        // Khởi tạo ứng dụng khi DOM đã tải xong
+        document.addEventListener('DOMContentLoaded', main);
     </script>
 </body>
 </html>
